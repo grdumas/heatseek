@@ -298,7 +298,7 @@ def generate_html_visualization(matrix, benchmarks, platform_stats, system_metad
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Performance Test Coverage Matrix</title>
+    <title>HeatSeek - Performance Test Coverage</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <style>
@@ -574,7 +574,7 @@ def generate_html_visualization(matrix, benchmarks, platform_stats, system_metad
 </head>
 <body>
     <div class="header">
-        <h1>Performance Test Coverage Matrix</h1>
+        <h1>HeatSeek - Performance Test Coverage</h1>
         <div class="subtitle">
             Red Hat Enterprise Linux Performance Testing Coverage Analysis<br>
             Generated: """ + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + """
@@ -1238,7 +1238,7 @@ def generate_html_visualization(matrix, benchmarks, platform_stats, system_metad
 def main():
     """Main execution."""
     index = os.getenv('OPENSEARCH_INDEX', 'zathras-results')
-    output_file = 'test_coverage_matrix.html'
+    output_file = 'heatseek.html'
 
     try:
         print("="*80)

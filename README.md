@@ -1,4 +1,4 @@
-# Test Coverage Matrix
+# HeatSeek
 
 Interactive visualization tool for analyzing RHEL performance test coverage across platforms, systems, and benchmarks.
 
@@ -63,7 +63,7 @@ source venv/bin/activate
 python3 visualize_test_coverage.py
 ```
 
-This creates `test_coverage_matrix.html` - a standalone HTML file you can:
+This creates `heatseek.html` - a standalone HTML file you can:
 - Open directly in a browser
 - Host on a web server
 - Share via email/Confluence
@@ -71,9 +71,9 @@ This creates `test_coverage_matrix.html` - a standalone HTML file you can:
 ### 4. View Results
 
 ```bash
-firefox test_coverage_matrix.html
+firefox heatseek.html
 # or
-google-chrome test_coverage_matrix.html
+google-chrome heatseek.html
 ```
 
 ## Deployment Options
@@ -84,14 +84,14 @@ Host the generated HTML on any web server:
 
 ```bash
 # Apache
-cp test_coverage_matrix.html /var/www/html/coverage.html
+cp heatseek.html /var/www/html/coverage.html
 
 # Nginx
-cp test_coverage_matrix.html /usr/share/nginx/html/coverage.html
+cp heatseek.html /usr/share/nginx/html/coverage.html
 
 # Python HTTP server (testing)
 python3 -m http.server 8080
-# Visit: http://localhost:8080/test_coverage_matrix.html
+# Visit: http://localhost:8080/heatseek.html
 ```
 
 ### Option 2: Auto-Regenerate with Cron
@@ -100,7 +100,7 @@ Set up weekly regeneration:
 
 ```bash
 # Add to crontab (regenerate every Sunday at 2 AM)
-0 2 * * 0 cd /home/user/repos/test-coverage-matrix && source venv/bin/activate && python3 visualize_test_coverage.py && cp test_coverage_matrix.html /var/www/html/coverage.html
+0 2 * * 0 cd /home/user/repos/heatseek && source venv/bin/activate && python3 visualize_test_coverage.py && cp heatseek.html /var/www/html/coverage.html
 ```
 
 ### Option 3: Simple Express Server (with API)
@@ -117,7 +117,7 @@ const path = require('path');
 const app = express();
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'test_coverage_matrix.html'));
+  res.sendFile(path.join(__dirname, 'heatseek.html'));
 });
 
 app.post('/api/regenerate', (req, res) => {
@@ -169,7 +169,7 @@ node server.js
 
 ## Output
 
-The generated HTML file (`test_coverage_matrix.html`) is:
+The generated HTML file (`heatseek.html`) is:
 - **Standalone**: No external dependencies, works offline
 - **Interactive**: Plotly.js embedded for zoom, pan, export
 - **Responsive**: Works on desktop, tablet, mobile

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Deploy script for Test Coverage Matrix
+# Deploy script for HeatSeek
 #
 # Usage:
 #   ./deploy.sh [web-root-path]
@@ -14,7 +14,7 @@ set -e  # Exit on error
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OUTPUT_FILE="test_coverage_matrix.html"
+OUTPUT_FILE="heatseek.html"
 DEFAULT_WEB_ROOT="/var/www/html"
 TARGET_FILENAME="coverage.html"
 
@@ -22,7 +22,7 @@ TARGET_FILENAME="coverage.html"
 WEB_ROOT="${1:-$DEFAULT_WEB_ROOT}"
 
 echo "=========================================="
-echo "Test Coverage Matrix Deployment"
+echo "HeatSeek Deployment"
 echo "=========================================="
 echo ""
 
