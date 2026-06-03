@@ -69,6 +69,21 @@ async def get_coverage_data():
 
         executive_summary = calculate_executive_summary(matrix, benchmarks)
 
+        def serialize_summary(summary):
+            """Convert sets in executive summary to lists for JSON serialization."""
+            serialized = summary.copy()
+            if 'recommended_systems' in serialized:
+                serialized['recommended_systems'] = [
+                    (system, {
+                        'total': stats['total'],
+                        'viable': stats['viable'],
+                        'benchmarks': list(stats['benchmarks'])
+                    })
+                    for system, stats in serialized['recommended_systems']
+                ]
+            return serialized
+
+        serialized_summary = serialize_summary(executive_summary)
         serialized_matrix = {}
         for platform, systems in matrix.items():
             serialized_matrix[platform] = {}
@@ -90,7 +105,7 @@ async def get_coverage_data():
             "benchmarks": benchmarks,
             "platform_stats": serialized_platform_stats,
             "system_metadata": system_metadata,
-            "executive_summary": executive_summary,
+            "executive_summary": serialized_summary,
             "total_documents": len(docs)
         })
 
