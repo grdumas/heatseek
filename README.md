@@ -210,6 +210,58 @@ Pulls data from OpenSearch index configured in `.env`:
 
 ## Troubleshooting
 
+### "Failed to load coverage data: JSON.parse" Error (Real-time Dashboard)
+
+This error occurs when the dashboard receives a non-JSON response from the API server.
+
+**Quick Diagnostics**:
+```bash
+# 1. Check server configuration status
+curl http://localhost:8000/api/config-status
+
+# Expected response:
+# {
+#   "opensearch_host": "configured",
+#   "opensearch_username": "configured",
+#   "opensearch_password": "configured",
+#   "opensearch_connection": "success"
+# }
+
+# 2. Test API endpoints directly (should return JSON, not HTML)
+curl http://localhost:8000/api/summary
+curl http://localhost:8000/api/coverage
+```
+
+**Common Causes**:
+
+1. **Missing Environment Variables**
+   ```bash
+   # Ensure all required variables are set:
+   export OPENSEARCH_HOST="your-opensearch-host.com"
+   export OPENSEARCH_USERNAME="your-username"
+   export OPENSEARCH_PASSWORD="your-password"
+   export OPENSEARCH_INDEX="zathras-results"  # optional, defaults to zathras-results
+   ```
+
+2. **OpenSearch Connection Failure**
+   - Check if host is reachable: `curl -k https://$OPENSEARCH_HOST:443`
+   - Test authentication: `curl -k -u "$OPENSEARCH_USERNAME:$OPENSEARCH_PASSWORD" https://$OPENSEARCH_HOST:443`
+   - Check server logs for connection errors
+
+3. **Server Not Listening on All Interfaces (Remote Access)**
+   ```bash
+   # Use --host 0.0.0.0, not 127.0.0.1
+   uvicorn server:app --host 0.0.0.0 --port 8000
+   
+   # Check firewall rules
+   sudo firewall-cmd --add-port=8000/tcp --permanent
+   sudo firewall-cmd --reload
+   ```
+
+4. **Browser Console Errors**
+   - Open DevTools (F12) → Console tab for detailed error messages
+   - Check Network tab to see actual API response content
+
 ### "No module named 'opensearchpy'"
 ```bash
 source venv/bin/activate
@@ -227,6 +279,15 @@ Check OpenSearch index:
 - Verify index name in `.env` matches actual index
 - Confirm data exists: `curl -u username:password https://host:443/index/_count`
 - Check date range - data might be outside expected timeframe
+
+### Port Already in Use
+```bash
+# Find what's using port 8000
+lsof -i :8000
+
+# Use a different port
+uvicorn server:app --host 0.0.0.0 --port 8001
+```
 
 ### Output file is too large (> 1 MB)
 - Large datasets generate big HTML files
