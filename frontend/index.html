@@ -329,6 +329,7 @@
 
         .recommendation {
             border-left: 4px solid #1976D2;
+            padding: 12px 15px;
         }
 
         .no-issues {
@@ -883,10 +884,41 @@
                     recsDesc.textContent = 'These systems have the best test coverage across multiple benchmarks:';
                     recsSection.appendChild(recsDesc);
 
-                    summaryData.recommended_systems.forEach(system => {
+                    summaryData.recommended_systems.forEach(([systemName, stats]) => {
                         const recItem = document.createElement('div');
                         recItem.className = 'insight-item recommendation';
-                        recItem.textContent = system;
+
+                        // Line 1: System name (bold, larger)
+                        const systemNameDiv = document.createElement('div');
+                        systemNameDiv.style.fontWeight = 'bold';
+                        systemNameDiv.style.fontSize = '15px';
+                        systemNameDiv.style.marginBottom = '4px';
+                        systemNameDiv.textContent = systemName;
+                        recItem.appendChild(systemNameDiv);
+
+                        // Line 2: Platform • CPU • Cores • Architecture (smaller, gray)
+                        const metadataDiv = document.createElement('div');
+                        metadataDiv.style.fontSize = '13px';
+                        metadataDiv.style.color = '#6c757d';
+                        metadataDiv.style.marginBottom = '4px';
+
+                        // Simplify CPU model for display
+                        let cpuDisplay = stats.cpu_model;
+                        if (cpuDisplay.length > 40) {
+                            cpuDisplay = cpuDisplay.substring(0, 37) + '...';
+                        }
+
+                        metadataDiv.textContent = `${stats.platform} • ${cpuDisplay} • ${stats.cores} cores • ${stats.arch}`;
+                        recItem.appendChild(metadataDiv);
+
+                        // Line 3: Coverage stats
+                        const coverageDiv = document.createElement('div');
+                        coverageDiv.style.fontSize = '13px';
+                        coverageDiv.style.color = '#495057';
+                        const benchmarkCount = Array.isArray(stats.benchmarks) ? stats.benchmarks.length : 0;
+                        coverageDiv.textContent = `${stats.viable} viable tests across ${benchmarkCount} benchmarks`;
+                        recItem.appendChild(coverageDiv);
+
                         recsSection.appendChild(recItem);
                     });
                 } else {
