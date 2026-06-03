@@ -737,6 +737,27 @@
                 element.appendChild(loadingDiv);
             }
 
+            updateFilterStatus() {
+                const platformCount = Object.keys(this.data).length;
+                const totalCells = Object.values(this.data).reduce((sum, cells) => sum + cells.length, 0);
+
+                const activeFilters = [];
+                if (this.filters.benchmark) activeFilters.push(this.filters.benchmark);
+                if (this.filters.architecture) activeFilters.push(this.filters.architecture);
+                if (this.filters.min_builds && this.filters.min_builds > 0) {
+                    activeFilters.push(`${this.filters.min_builds}+ builds`);
+                }
+
+                let status;
+                if (activeFilters.length === 0) {
+                    status = `Showing all platforms (${platformCount} platforms, ${totalCells} combinations)`;
+                } else {
+                    status = `Filtered by ${activeFilters.join(', ')} (${platformCount} platforms, ${totalCells} combinations)`;
+                }
+
+                document.getElementById('filterStatus').textContent = status;
+            }
+
             setupEventListeners() {
                 document.getElementById('benchmarkFilter').addEventListener('change', e => {
                     this.filters.benchmark = e.target.value;
