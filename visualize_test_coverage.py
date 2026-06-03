@@ -313,6 +313,7 @@ def generate_html_visualization(matrix, benchmarks, platform_stats, system_metad
             margin-bottom: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: relative;
         }
         h1 {
             margin: 0 0 10px 0;
@@ -322,6 +323,130 @@ def generate_html_visualization(matrix, benchmarks, platform_stats, system_metad
         .subtitle {
             color: #666;
             font-size: 14px;
+        }
+        .refresh-controls {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .refresh-btn {
+            background: #cc0000;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .refresh-btn:hover:not(:disabled) {
+            background: #a00000;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(204, 0, 0, 0.3);
+        }
+        .refresh-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .refresh-spinner {
+            display: none;
+            animation: spin 1s linear infinite;
+        }
+        .refresh-btn.loading .refresh-spinner {
+            display: inline-block;
+        }
+        .refresh-btn.loading .refresh-icon {
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .auto-refresh-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+        }
+        .auto-refresh-toggle input[type="checkbox"] {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+        .auto-refresh-toggle label {
+            cursor: pointer;
+            margin: 0;
+            user-select: none;
+        }
+        .last-updated {
+            font-size: 12px;
+            color: #666;
+            background: #f8f9fa;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        .loading-overlay.active {
+            display: flex;
+        }
+        .loading-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #cc0000;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        .error-banner {
+            display: none;
+            background: #dc3545;
+            color: white;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .error-banner.active {
+            display: block;
+        }
+        .error-banner .close-btn {
+            float: right;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0 5px;
         }
         .executive-summary {
             background: white;
@@ -573,11 +698,44 @@ def generate_html_visualization(matrix, benchmarks, platform_stats, system_metad
     </style>
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div style="font-size: 16px; font-weight: 600; color: #333;">
+                Fetching fresh data from OpenSearch...
+            </div>
+            <div style="font-size: 13px; color: #666; margin-top: 8px;">
+                This may take 5-10 seconds
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Banner -->
+    <div id="error-banner" class="error-banner">
+        <button class="close-btn" onclick="hideErrorBanner()">&times;</button>
+        <strong>Error:</strong> <span id="error-message"></span>
+    </div>
+
     <div class="header">
         <h1>HeatSeek - Performance Test Coverage</h1>
         <div class="subtitle">
             Red Hat Enterprise Linux Performance Testing Coverage Analysis<br>
-            Generated: """ + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + """
+            <span id="last-updated">Generated: """ + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + """</span>
+        </div>
+        <div class="refresh-controls">
+            <div class="last-updated">
+                <span id="data-timestamp">""" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + """</span>
+            </div>
+            <div class="auto-refresh-toggle">
+                <input type="checkbox" id="auto-refresh-checkbox" onchange="toggleAutoRefresh()">
+                <label for="auto-refresh-checkbox">Auto-refresh (60s)</label>
+            </div>
+            <button id="refresh-btn" class="refresh-btn" onclick="refreshData()">
+                <span class="refresh-icon">🔄</span>
+                <span class="refresh-spinner">⏳</span>
+                Refresh Data
+            </button>
         </div>
     </div>
 """)
@@ -1221,6 +1379,272 @@ def generate_html_visualization(matrix, benchmarks, platform_stats, system_metad
             updateCoverageLabel();
             applyFilters();
         }}
+
+        // Live Data Refresh Functionality
+        let autoRefreshInterval = null;
+        const API_BASE_URL = window.location.origin;
+
+        function showLoading() {{
+            document.getElementById('loading-overlay').classList.add('active');
+            const refreshBtn = document.getElementById('refresh-btn');
+            refreshBtn.classList.add('loading');
+            refreshBtn.disabled = true;
+        }}
+
+        function hideLoading() {{
+            document.getElementById('loading-overlay').classList.remove('active');
+            const refreshBtn = document.getElementById('refresh-btn');
+            refreshBtn.classList.remove('loading');
+            refreshBtn.disabled = false;
+        }}
+
+        function showError(message) {{
+            document.getElementById('error-message').textContent = message;
+            document.getElementById('error-banner').classList.add('active');
+        }}
+
+        function hideErrorBanner() {{
+            document.getElementById('error-banner').classList.remove('active');
+        }}
+
+        function updateTimestamp() {{
+            const now = new Date();
+            const formatted = now.getFullYear() + '-' +
+                String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                String(now.getDate()).padStart(2, '0') + ' ' +
+                String(now.getHours()).padStart(2, '0') + ':' +
+                String(now.getMinutes()).padStart(2, '0') + ':' +
+                String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('data-timestamp').textContent = formatted;
+            document.getElementById('last-updated').textContent = 'Generated: ' + formatted;
+        }}
+
+        function getSystemLabel(systemMeta, systemName, benchmarksCovered, totalBenchmarks) {{
+            const archIcon = systemMeta.arch_icon || '?';
+            const coverageText = benchmarksCovered + '/' + totalBenchmarks;
+            return archIcon + ' ' + systemName + ' [' + coverageText + ']';
+        }}
+
+        async function refreshData() {{
+            hideErrorBanner();
+            showLoading();
+
+            try {{
+                const response = await fetch(API_BASE_URL + '/api/coverage');
+
+                if (!response.ok) {{
+                    throw new Error('Failed to fetch data: ' + response.statusText);
+                }}
+
+                const data = await response.json();
+
+                // Update the visualization with new data
+                updateVisualization(data);
+
+                // Update timestamp
+                updateTimestamp();
+
+                console.log('Data refreshed successfully');
+
+            }} catch (error) {{
+                console.error('Error fetching data:', error);
+                showError('Failed to fetch fresh data: ' + error.message + '. Please try again.');
+            }} finally {{
+                hideLoading();
+            }}
+        }}
+
+        function updateVisualization(data) {{
+            const matrix = data.matrix;
+            const benchmarks = data.benchmarks;
+            const platformStats = data.platform_stats;
+            const systemMetadata = data.system_metadata;
+            const executiveSummary = data.executive_summary;
+
+            // Update executive summary
+            if (executiveSummary) {{
+                document.getElementById('overall-score').textContent =
+                    executiveSummary.overall_score.toFixed(1) + '%';
+                document.getElementById('coverage-details').innerHTML =
+                    executiveSummary.viable_combos.toLocaleString() + ' of ' +
+                    executiveSummary.total_combos.toLocaleString() + ' combinations<br>' +
+                    'have multi-release coverage (2+ OS builds)';
+            }}
+
+            // Update each platform's plot
+            let plotId = 0;
+            const platforms = Object.keys(matrix).sort();
+
+            for (const platform of platforms) {{
+                const systems = matrix[platform];
+                const systemList = Object.keys(systems).sort();
+                const systemMeta = systemMetadata[platform];
+
+                // Build matrix data
+                const zData = [];
+                const hoverData = [];
+                const yLabels = [];
+                const systemArchs = [];
+                const systemLabels = [];
+
+                for (const system of systemList) {{
+                    const rowZ = [];
+                    const rowHover = [];
+
+                    const meta = systemMeta[system] || {{
+                        arch_icon: '?',
+                        full_model: 'Unknown',
+                        cores: 0,
+                        arch: 'unknown'
+                    }};
+
+                    // Calculate coverage for this system
+                    let benchmarksCovered = 0;
+                    for (const benchmark of benchmarks) {{
+                        if (systems[system][benchmark] && systems[system][benchmark].length > 0) {{
+                            benchmarksCovered++;
+                        }}
+                    }}
+
+                    const yLabel = getSystemLabel(meta, system, benchmarksCovered, benchmarks.length);
+                    yLabels.push(yLabel);
+                    systemArchs.push(meta.arch);
+                    systemLabels.push(system);
+
+                    for (const benchmark of benchmarks) {{
+                        const osBuilds = systems[system][benchmark] || [];
+                        const count = osBuilds.length;
+                        rowZ.push(count);
+
+                        if (count > 0) {{
+                            const osList = osBuilds.sort().join('<br>');
+                            const hoverText =
+                                '<b>System:</b> ' + meta.full_model + '<br>' +
+                                '<b>Cores:</b> ' + meta.cores + '<br>' +
+                                '<b>Architecture:</b> ' + meta.arch + '<br>' +
+                                '<b>Benchmark:</b> ' + benchmark + '<br>' +
+                                '<br><b>' + count + ' OS build(s):</b><br>' + osList;
+                            rowHover.push(hoverText);
+                        }} else {{
+                            const hoverText =
+                                '<b>System:</b> ' + meta.full_model + '<br>' +
+                                '<b>Cores:</b> ' + meta.cores + '<br>' +
+                                '<b>Architecture:</b> ' + meta.arch + '<br>' +
+                                '<b>Benchmark:</b> ' + benchmark + '<br>' +
+                                '<br>No coverage';
+                            rowHover.push(hoverText);
+                        }}
+                    }}
+
+                    zData.push(rowZ);
+                    hoverData.push(rowHover);
+                }}
+
+                // Update original data store
+                window['originalData_' + plotId] = {{
+                    z: zData,
+                    x: benchmarks,
+                    y: yLabels,
+                    text: hoverData,
+                    archs: systemArchs,
+                    systemLabels: systemLabels
+                }};
+
+                // Update the plot
+                const plotDiv = 'plot_' + plotId;
+                Plotly.react(plotDiv, [{{
+                    type: 'heatmap',
+                    z: zData,
+                    x: benchmarks,
+                    y: yLabels,
+                    text: hoverData,
+                    hovertemplate: '%{{text}}<extra></extra>',
+                    colorscale: [
+                        [0,    '#e0e0e0'],
+                        [0.15, '#ffd966'],
+                        [0.3,  '#93c47d'],
+                        [0.5,  '#6aa84f'],
+                        [1,    '#38761d']
+                    ],
+                    colorbar: {{
+                        title: 'Coverage<br>Quality',
+                        tickmode: 'array',
+                        tickvals: [0, 1, 2, 3, 5],
+                        ticktext: ['None', 'Insufficient', 'Minimal', 'Good', 'Excellent'],
+                        len: 0.8
+                    }},
+                    zmin: 0,
+                    zmax: 6
+                }}], {{
+                    xaxis: {{
+                        title: 'Benchmark',
+                        tickangle: -45,
+                        side: 'bottom',
+                        automargin: true
+                    }},
+                    yaxis: {{
+                        title: 'System Configuration [Benchmarks Covered]',
+                        automargin: true,
+                        tickfont: {{ size: 11 }}
+                    }},
+                    margin: {{ l: 300, r: 120, t: 30, b: 150 }},
+                    height: Math.max(500, yLabels.length * 35),
+                    paper_bgcolor: 'white',
+                    plot_bgcolor: 'white'
+                }});
+
+                plotId++;
+            }}
+
+            // Update benchmark filter dropdown
+            const benchmarkFilter = document.getElementById('benchmark-filter');
+            const currentSelections = Array.from(benchmarkFilter.selectedOptions).map(opt => opt.value);
+
+            // Rebuild options
+            benchmarkFilter.innerHTML = '<option value="all" selected>All Benchmarks</option>';
+            for (const benchmark of benchmarks) {{
+                const option = document.createElement('option');
+                option.value = benchmark;
+                option.textContent = benchmark;
+                if (currentSelections.includes(benchmark)) {{
+                    option.selected = true;
+                }}
+                benchmarkFilter.appendChild(option);
+            }}
+
+            // Re-apply current filters
+            applyFilters();
+        }}
+
+        function toggleAutoRefresh() {{
+            const checkbox = document.getElementById('auto-refresh-checkbox');
+
+            if (checkbox.checked) {{
+                // Start auto-refresh (every 60 seconds)
+                autoRefreshInterval = setInterval(() => {{
+                    console.log('Auto-refreshing data...');
+                    refreshData();
+                }}, 60000);
+                console.log('Auto-refresh enabled (60s interval)');
+            }} else {{
+                // Stop auto-refresh
+                if (autoRefreshInterval) {{
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }}
+                console.log('Auto-refresh disabled');
+            }}
+        }}
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {{
+            if (autoRefreshInterval) {{
+                clearInterval(autoRefreshInterval);
+            }}
+        }});
+
+        console.log('HeatSeek initialized with live data refresh capability');
+        console.log('API endpoint: ' + API_BASE_URL + '/api/coverage');
     </script>
 </body>
 </html>
