@@ -205,7 +205,18 @@ def build_coverage_matrix(results: list) -> dict[str, list[CoverageCell]]:
     return dict(cells_by_platform)
 
 def calculate_summary(cells_by_platform: dict[str, list[CoverageCell]]) -> dict:
-    """Generate executive summary from coverage matrix"""
+    """
+    Generate executive summary from coverage matrix.
+
+    Note: A similar function exists in visualize_test_coverage.py for static HTML
+    generation. The implementations differ because:
+    - This works with CoverageCell objects; visualize_test_coverage.py uses nested dicts
+    - This ranks by benchmark count; visualize_test_coverage.py ranks by viable coverage
+    - This serves the real-time API; visualize_test_coverage.py generates static reports
+
+    If the core definition of "critical gap" or "recommended system" changes,
+    both implementations must be updated.
+    """
 
     all_cells = [cell for cells_list in cells_by_platform.values() for cell in cells_list]
 

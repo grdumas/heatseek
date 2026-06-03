@@ -201,6 +201,15 @@ def calculate_executive_summary(matrix, benchmarks, system_metadata):
     """
     Calculate executive summary metrics for the dashboard.
 
+    Note: A similar function exists in server.py for the real-time API.
+    The implementations differ because:
+    - This works with nested dict matrix; server.py uses CoverageCell objects
+    - This ranks by viable coverage; server.py ranks by benchmark count
+    - This generates static HTML reports; server.py serves the live API
+
+    If the core definition of "critical gap" or "recommended system" changes,
+    both implementations must be updated.
+
     Args:
     - matrix: Coverage matrix keyed by platform/system/benchmark
     - benchmarks: List of all benchmarks
