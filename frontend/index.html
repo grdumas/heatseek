@@ -309,13 +309,13 @@
 
         <div class="tabs" id="platformTabs" role="tablist" aria-label="Platform selection"></div>
 
-        <div class="platform-summary" id="platformSummary" style="display: none;">
+        <div class="platform-summary" id="platformSummary" role="tabpanel" style="display: none;">
             <div class="summary" style="margin: 0 0 20px 0;">
                 <!-- Platform-specific stats will be inserted here -->
             </div>
         </div>
 
-        <div id="heatmap">
+        <div id="heatmap" role="tabpanel">
             <div class="loading">
                 <div class="spinner"></div>
                 Loading coverage data...
@@ -499,6 +499,7 @@
                         button.setAttribute('role', 'tab');
                         button.setAttribute('tabindex', '0');
                         button.setAttribute('aria-label', `${platform} platform`);
+                        button.setAttribute('aria-controls', 'platformSummary heatmap');
                         if (platform === this.currentPlatform) {
                             button.classList.add('active');
                             button.setAttribute('aria-selected', 'true');
