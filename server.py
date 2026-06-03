@@ -245,6 +245,7 @@ def calculate_summary(cells_by_platform: dict[str, list[CoverageCell]]) -> dict:
         if cell.build_count >= 3:
             system_scores[cell.system]['count'] += 1
             system_scores[cell.system]['benchmarks'].add(cell.benchmark)
+
             # Store metadata from first occurrence
             if system_scores[cell.system]['metadata'] is None:
                 system_scores[cell.system]['metadata'] = {
@@ -253,6 +254,20 @@ def calculate_summary(cells_by_platform: dict[str, list[CoverageCell]]) -> dict:
                     'cpu_cores': cell.cpu_cores,
                     'architecture': cell.architecture
                 }
+            else:
+                # Validate metadata consistency
+                # Note: Same system name can have different CPUs in rare cases
+                # (e.g., early AWS Intel instances where one instance type could be
+                # provisioned with one of two different CPU models)
+                existing = system_scores[cell.system]['metadata']
+                if (existing['cpu_info'] != cell.cpu_info or
+                    existing['cpu_cores'] != cell.cpu_cores):
+                    logger.warning(
+                        f"Metadata inconsistency for system '{cell.system}': "
+                        f"existing CPU='{existing['cpu_info']}' ({existing['cpu_cores']} cores), "
+                        f"found CPU='{cell.cpu_info}' ({cell.cpu_cores} cores). "
+                        f"Using first occurrence."
+                    )
 
     top_systems = sorted(
         system_scores.items(),
