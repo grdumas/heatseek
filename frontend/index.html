@@ -904,11 +904,20 @@
 
                         // Simplify CPU model for display
                         let cpuDisplay = stats.cpu_model;
-                        if (cpuDisplay.length > 40) {
+                        const isTruncated = cpuDisplay.length > 40;
+                        if (isTruncated) {
                             cpuDisplay = cpuDisplay.substring(0, 37) + '...';
                         }
 
-                        metadataDiv.textContent = `${stats.platform} • ${cpuDisplay} • ${stats.cores} cores • ${stats.arch}`;
+                        const metadataText = `${stats.platform} • ${cpuDisplay} • ${stats.cores} cores • ${stats.arch}`;
+                        metadataDiv.textContent = metadataText;
+
+                        // Add tooltip with full CPU model if truncated
+                        if (isTruncated) {
+                            metadataDiv.title = `${stats.platform} • ${stats.cpu_model} • ${stats.cores} cores • ${stats.arch}`;
+                            metadataDiv.style.cursor = 'help';
+                        }
+
                         recItem.appendChild(metadataDiv);
 
                         // Line 3: Coverage stats
