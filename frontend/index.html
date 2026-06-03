@@ -545,10 +545,14 @@
                     const updateTime = new Date(summary.generated_at);
                     document.getElementById('lastUpdate').textContent =
                         `Updated: ${updateTime.toLocaleTimeString()}`;
+
+                    // Render executive summary insights
+                    this.renderExecutiveSummary(summary);
                 } catch (error) {
                     this.showError('Failed to load summary: ' + error.message);
                     // Clear loading spinner on error
                     this.setLoadingMessage('summary', 'Failed to load summary');
+                    this.setLoadingMessage('summaryInsights', 'Failed to load insights');
                     document.getElementById('lastUpdate').textContent = 'Error loading data';
                 }
             }
