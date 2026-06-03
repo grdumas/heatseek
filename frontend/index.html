@@ -589,7 +589,7 @@
                     await this.loadCoverage();
                     this.setupEventListeners();
                 } catch (error) {
-                    this.showError('Failed to initialize dashboard: ' + error.message);
+                    this.showError('Failed to initialize dashboard: ' + error.message, () => this.init());
                     // Clear all loading spinners on initialization failure
                     this.setLoadingMessage('summary', 'Failed to load summary');
                     this.setLoadingMessage('heatmap', 'Failed to load data. See error message above.');
@@ -598,13 +598,54 @@
                 }
             }
 
-            showError(message) {
-                const errorContainer = document.getElementById('errorContainer');
-                errorContainer.textContent = ''; // Clear existing errors
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'error';
-                errorDiv.textContent = message; // Safe: no HTML interpretation
-                errorContainer.appendChild(errorDiv);
+            showError(message, retryCallback = null) {
+                // Remove any existing toasts
+                const existingToast = document.querySelector('.toast');
+                if (existingToast) {
+                    existingToast.remove();
+                }
+
+                // Create toast
+                const toast = document.createElement('div');
+                toast.className = 'toast';
+
+                const messageSpan = document.createElement('span');
+                messageSpan.className = 'toast-message';
+                messageSpan.textContent = message;
+                toast.appendChild(messageSpan);
+
+                // Create actions container
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'toast-actions';
+
+                // Add retry button if callback provided
+                if (retryCallback) {
+                    const retryBtn = document.createElement('button');
+                    retryBtn.className = 'toast-btn';
+                    retryBtn.textContent = 'Retry';
+                    retryBtn.onclick = () => {
+                        toast.remove();
+                        retryCallback();
+                    };
+                    actionsDiv.appendChild(retryBtn);
+                }
+
+                // Add dismiss button
+                const dismissBtn = document.createElement('button');
+                dismissBtn.className = 'dismiss-btn';
+                dismissBtn.textContent = '×';
+                dismissBtn.onclick = () => toast.remove();
+                actionsDiv.appendChild(dismissBtn);
+
+                toast.appendChild(actionsDiv);
+                document.body.appendChild(toast);
+
+                // Auto-dismiss after 8 seconds
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.remove();
+                    }
+                }, 8000);
             }
 
             clearError() {
@@ -689,7 +730,7 @@
                     // Render executive summary insights
                     this.renderExecutiveSummary(summary);
                 } catch (error) {
-                    this.showError('Failed to load summary: ' + error.message);
+                    this.showError('Failed to load summary: ' + error.message, () => this.loadSummary());
                     // Clear loading spinner on error
                     this.setLoadingMessage('summary', 'Failed to load summary');
                     this.setLoadingMessage('summaryInsights', 'Failed to load insights');
@@ -783,7 +824,7 @@
                     // Update filter status with current data
                     this.updateFilterStatus();
                 } catch (error) {
-                    this.showError('Failed to load coverage data: ' + error.message);
+                    this.showError('Failed to load coverage data: ' + error.message, () => this.loadCoverage());
                     // Clear loading spinner on error
                     this.setLoadingMessage('heatmap', 'Failed to load data. See error message above.');
                     document.getElementById('platformTabs').textContent = '';
@@ -1115,7 +1156,7 @@
                     await this.loadCoverage();
                     this.clearError();
                 } catch (error) {
-                    this.showError('Failed to refresh: ' + error.message);
+                    this.showError('Failed to refresh: ' + error.message, () => this.refresh());
                 } finally {
                     btn.disabled = false;
                     btn.textContent = '🔄 Refresh Data';
