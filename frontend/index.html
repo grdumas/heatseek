@@ -1012,6 +1012,12 @@
                 } finally {
                     btn.disabled = false;
                     btn.textContent = '🔄 Refresh Data';
+
+                    // Reset auto-refresh timer if enabled
+                    // This prevents manual refresh at 59s being followed by auto-refresh at 60s
+                    if (this.autoRefreshInterval) {
+                        this.startAutoRefresh();
+                    }
                 }
             }
 
