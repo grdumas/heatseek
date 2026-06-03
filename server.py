@@ -39,6 +39,14 @@ OPENSEARCH_CONFIG = {
 
 def get_opensearch_client():
     """Create OpenSearch client with configuration from environment"""
+    # Validate required configuration
+    if not OPENSEARCH_CONFIG["host"]:
+        raise ValueError("OPENSEARCH_HOST environment variable is required")
+    if not OPENSEARCH_CONFIG["username"]:
+        raise ValueError("OPENSEARCH_USERNAME environment variable is required")
+    if not OPENSEARCH_CONFIG["password"]:
+        raise ValueError("OPENSEARCH_PASSWORD environment variable is required")
+
     return OpenSearch(
         hosts=[{"host": OPENSEARCH_CONFIG["host"], "port": OPENSEARCH_CONFIG["port"]}],
         http_auth=(OPENSEARCH_CONFIG["username"], OPENSEARCH_CONFIG["password"]),
@@ -235,12 +243,21 @@ def get_cached_data(cache_key: str) -> tuple[dict, dict]:
     Returns: (coverage_matrix, summary)
     """
     logger.info(f"Cache miss - fetching fresh data (key: {cache_key})")
-    client = get_opensearch_client()
-    query = CoverageQuery(client)
-    results = query.get_all_results()
-    matrix = build_coverage_matrix(results)
-    summary = calculate_summary(matrix)
-    return matrix, summary
+    try:
+        client = get_opensearch_client()
+        query = CoverageQuery(client)
+        results = query.get_all_results()
+        matrix = build_coverage_matrix(results)
+        summary = calculate_summary(matrix)
+        return matrix, summary
+    except ValueError as e:
+        # Configuration errors
+        logger.error(f"Configuration error: {e}")
+        raise HTTPException(status_code=500, detail=f"Server configuration error: {str(e)}")
+    except Exception as e:
+        # Any other errors during data fetch
+        logger.error(f"Error fetching data: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch coverage data: {str(e)}")
 
 # ============ API Endpoints ============
 @app.get("/api/coverage")
@@ -323,6 +340,32 @@ async def get_benchmarks():
 async def health_check():
     """Health check endpoint for monitoring"""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+@app.get("/api/config-status")
+async def config_status():
+    """Check configuration status (for debugging)"""
+    status = {
+        "opensearch_host": "configured" if OPENSEARCH_CONFIG["host"] else "missing",
+        "opensearch_port": OPENSEARCH_CONFIG["port"],
+        "opensearch_username": "configured" if OPENSEARCH_CONFIG["username"] else "missing",
+        "opensearch_password": "configured" if OPENSEARCH_CONFIG["password"] else "missing",
+        "opensearch_index": OPENSEARCH_CONFIG["index"],
+        "timestamp": datetime.now().isoformat()
+    }
+
+    # Try to connect
+    try:
+        client = get_opensearch_client()
+        # Simple ping to verify connection
+        info = client.info()
+        status["opensearch_connection"] = "success"
+        status["opensearch_version"] = info.get("version", {}).get("number", "unknown")
+    except ValueError as e:
+        status["opensearch_connection"] = f"config_error: {str(e)}"
+    except Exception as e:
+        status["opensearch_connection"] = f"connection_error: {str(e)}"
+
+    return status
 
 @app.get("/")
 async def serve_frontend():
