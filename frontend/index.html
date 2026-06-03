@@ -105,7 +105,8 @@
         }
 
         select:focus, input[type="number"]:focus {
-            outline: none;
+            outline: 2px solid #2E7D32;
+            outline-offset: 2px;
             border-color: #2E7D32;
         }
 
@@ -124,6 +125,11 @@
 
         .refresh-btn:hover {
             background: #1B5E20;
+        }
+
+        .refresh-btn:focus {
+            outline: 2px solid #1B5E20;
+            outline-offset: 2px;
         }
 
         .refresh-btn:active {
@@ -162,6 +168,11 @@
 
         .tab:hover {
             border-color: #2E7D32;
+        }
+
+        .tab:focus {
+            outline: 2px solid #2E7D32;
+            outline-offset: 2px;
         }
 
         .tab.active {
