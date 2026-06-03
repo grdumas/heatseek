@@ -608,6 +608,8 @@
                 // Create toast
                 const toast = document.createElement('div');
                 toast.className = 'toast';
+                toast.setAttribute('role', 'alert');
+                toast.setAttribute('aria-live', 'assertive');
 
                 const messageSpan = document.createElement('span');
                 messageSpan.className = 'toast-message';
