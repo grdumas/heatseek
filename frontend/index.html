@@ -352,21 +352,23 @@
                 } catch (error) {
                     this.showError('Failed to initialize dashboard: ' + error.message);
                     // Clear all loading spinners on initialization failure
-                    document.getElementById('summary').innerHTML =
-                        '<div class="loading">Failed to load summary</div>';
-                    document.getElementById('heatmap').innerHTML =
-                        '<div class="loading">Failed to load data. See error message above.</div>';
-                    document.getElementById('lastUpdate').innerText = 'Error loading data';
+                    this.setLoadingMessage('summary', 'Failed to load summary');
+                    this.setLoadingMessage('heatmap', 'Failed to load data. See error message above.');
+                    document.getElementById('lastUpdate').textContent = 'Error loading data';
                 }
             }
 
             showError(message) {
                 const errorContainer = document.getElementById('errorContainer');
-                errorContainer.innerHTML = `<div class="error">${message}</div>`;
+                errorContainer.textContent = ''; // Clear existing errors
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error';
+                errorDiv.textContent = message; // Safe: no HTML interpretation
+                errorContainer.appendChild(errorDiv);
             }
 
             clearError() {
-                document.getElementById('errorContainer').innerHTML = '';
+                document.getElementById('errorContainer').textContent = '';
             }
 
             async loadBenchmarks() {
@@ -409,34 +411,42 @@
 
                     const summary = await response.json();
 
-                    document.getElementById('summary').innerHTML = `
-                        <div class="metric">
-                            <div class="metric-value">${summary.coverage_score}%</div>
-                            <div class="metric-label">Coverage Score</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value">${summary.viable_combinations}</div>
-                            <div class="metric-label">Viable for Regression</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value">${summary.total_combinations}</div>
-                            <div class="metric-label">Total Combinations</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value">${summary.critical_gaps.length}</div>
-                            <div class="metric-label">Critical Gaps</div>
-                        </div>
-                    `;
+                    // Build summary metrics safely
+                    const summaryContainer = document.getElementById('summary');
+                    summaryContainer.textContent = ''; // Clear loading state
+
+                    const metrics = [
+                        { value: summary.coverage_score + '%', label: 'Coverage Score' },
+                        { value: summary.viable_combinations, label: 'Viable for Regression' },
+                        { value: summary.total_combinations, label: 'Total Combinations' },
+                        { value: summary.critical_gaps.length, label: 'Critical Gaps' }
+                    ];
+
+                    metrics.forEach(({ value, label }) => {
+                        const metricDiv = document.createElement('div');
+                        metricDiv.className = 'metric';
+
+                        const valueDiv = document.createElement('div');
+                        valueDiv.className = 'metric-value';
+                        valueDiv.textContent = value;
+
+                        const labelDiv = document.createElement('div');
+                        labelDiv.className = 'metric-label';
+                        labelDiv.textContent = label;
+
+                        metricDiv.appendChild(valueDiv);
+                        metricDiv.appendChild(labelDiv);
+                        summaryContainer.appendChild(metricDiv);
+                    });
 
                     const updateTime = new Date(summary.generated_at);
-                    document.getElementById('lastUpdate').innerText =
+                    document.getElementById('lastUpdate').textContent =
                         `Updated: ${updateTime.toLocaleTimeString()}`;
                 } catch (error) {
                     this.showError('Failed to load summary: ' + error.message);
                     // Clear loading spinner on error
-                    document.getElementById('summary').innerHTML =
-                        '<div class="loading">Failed to load summary</div>';
-                    document.getElementById('lastUpdate').innerText = 'Error loading data';
+                    this.setLoadingMessage('summary', 'Failed to load summary');
+                    document.getElementById('lastUpdate').textContent = 'Error loading data';
                 }
             }
 
@@ -464,16 +474,24 @@
                     // Create platform tabs
                     const platforms = Object.keys(data).sort();
                     if (platforms.length === 0) {
-                        document.getElementById('heatmap').innerHTML =
-                            '<div class="loading">No data matches current filters</div>';
-                        document.getElementById('platformTabs').innerHTML = '';
+                        this.setLoadingMessage('heatmap', 'No data matches current filters');
+                        document.getElementById('platformTabs').textContent = '';
                         return;
                     }
 
-                    document.getElementById('platformTabs').innerHTML = platforms.map(p =>
-                        `<button class="tab ${p === this.currentPlatform ? 'active' : ''}"
-                                 onclick="app.showPlatform('${p}')">${p}</button>`
-                    ).join('');
+                    const tabsContainer = document.getElementById('platformTabs');
+                    tabsContainer.textContent = ''; // Clear existing tabs
+
+                    platforms.forEach(platform => {
+                        const button = document.createElement('button');
+                        button.className = 'tab';
+                        if (platform === this.currentPlatform) {
+                            button.classList.add('active');
+                        }
+                        button.textContent = platform;
+                        button.onclick = () => this.showPlatform(platform);
+                        tabsContainer.appendChild(button);
+                    });
 
                     // Show first platform if none selected
                     if (!this.currentPlatform || !platforms.includes(this.currentPlatform)) {
@@ -484,9 +502,8 @@
                 } catch (error) {
                     this.showError('Failed to load coverage data: ' + error.message);
                     // Clear loading spinner on error
-                    document.getElementById('heatmap').innerHTML =
-                        '<div class="loading">Failed to load data. See error message above.</div>';
-                    document.getElementById('platformTabs').innerHTML = '';
+                    this.setLoadingMessage('heatmap', 'Failed to load data. See error message above.');
+                    document.getElementById('platformTabs').textContent = '';
                 }
             }
 
@@ -495,8 +512,7 @@
                 const cells = this.data[platform];
 
                 if (!cells || cells.length === 0) {
-                    document.getElementById('heatmap').innerHTML =
-                        '<div class="loading">No data for this platform</div>';
+                    this.setLoadingMessage('heatmap', 'No data for this platform');
                     document.getElementById('platformSummary').style.display = 'none';
                     return;
                 }
@@ -516,28 +532,38 @@
                     ? Math.round((viableCells.length / cells.length) * 100)
                     : 0;
 
-                // Display platform summary
+                // Display platform summary safely
                 const summaryContainer = document.getElementById('platformSummary');
-                summaryContainer.innerHTML = `
-                    <div class="summary">
-                        <div class="metric">
-                            <div class="metric-value">${systems.length}</div>
-                            <div class="metric-label">Systems</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value">${allOsBuilds.length}</div>
-                            <div class="metric-label">OS Builds</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value">${totalTests}</div>
-                            <div class="metric-label">Total Tests</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value">${coverageScore}%</div>
-                            <div class="metric-label">Coverage Score</div>
-                        </div>
-                    </div>
-                `;
+                summaryContainer.textContent = ''; // Clear existing content
+
+                const summaryDiv = document.createElement('div');
+                summaryDiv.className = 'summary';
+
+                const platformMetrics = [
+                    { value: systems.length, label: 'Systems' },
+                    { value: allOsBuilds.length, label: 'OS Builds' },
+                    { value: totalTests, label: 'Total Tests' },
+                    { value: coverageScore + '%', label: 'Coverage Score' }
+                ];
+
+                platformMetrics.forEach(({ value, label }) => {
+                    const metricDiv = document.createElement('div');
+                    metricDiv.className = 'metric';
+
+                    const valueDiv = document.createElement('div');
+                    valueDiv.className = 'metric-value';
+                    valueDiv.textContent = value;
+
+                    const labelDiv = document.createElement('div');
+                    labelDiv.className = 'metric-label';
+                    labelDiv.textContent = label;
+
+                    metricDiv.appendChild(valueDiv);
+                    metricDiv.appendChild(labelDiv);
+                    summaryDiv.appendChild(metricDiv);
+                });
+
+                summaryContainer.appendChild(summaryDiv);
                 summaryContainer.style.display = 'block';
 
                 // Build z-values (build counts) and colors
@@ -624,8 +650,17 @@
                 };
 
                 // Clear loading spinner before rendering
-                document.getElementById('heatmap').innerHTML = '';
+                document.getElementById('heatmap').textContent = '';
                 Plotly.newPlot('heatmap', [trace], layout, config);
+            }
+
+            setLoadingMessage(elementId, message) {
+                const element = document.getElementById(elementId);
+                element.textContent = '';
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'loading';
+                loadingDiv.textContent = message;
+                element.appendChild(loadingDiv);
             }
 
             setupEventListeners() {
