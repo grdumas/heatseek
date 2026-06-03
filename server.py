@@ -68,6 +68,7 @@ class CoverageCell:
     benchmark: str
     os_builds: set[str]
     cpu_info: str
+    cpu_cores: int
     architecture: str
 
     @property
@@ -99,6 +100,7 @@ class CoverageCell:
             "os_builds": sorted(list(self.os_builds)),
             "build_count": self.build_count,
             "cpu_info": self.cpu_info,
+            "cpu_cores": self.cpu_cores,
             "architecture": self.architecture,
             "color": self.color_code,
             "viable": self.viable_for_regression
@@ -126,6 +128,7 @@ class CoverageQuery:
                 "metadata.cloud_provider",
                 "metadata.instance_type",
                 "system_under_test.hardware.cpu.model",
+                "system_under_test.hardware.cpu.cores",
                 "system_under_test.hardware.cpu.architecture",
                 "system_under_test.operating_system.version",
                 "test.name"
@@ -158,6 +161,7 @@ def build_coverage_matrix(results: list) -> dict[str, list[CoverageCell]]:
     grouped = defaultdict(lambda: {
         "os_builds": set(),
         "cpu_info": None,
+        "cpu_cores": 0,
         "platform": None,
         "architecture": None
     })
@@ -171,11 +175,13 @@ def build_coverage_matrix(results: list) -> dict[str, list[CoverageCell]]:
             os_version = src.get("system_under_test", {}).get("operating_system", {}).get("version", "unknown")
             cpu = src.get("system_under_test", {}).get("hardware", {}).get("cpu", {})
             cpu_model = cpu.get("model", "unknown")
+            cpu_cores = cpu.get("cores", 0)
             cpu_arch = cpu.get("architecture", "unknown")
 
             key = (platform, system, benchmark)
             grouped[key]["os_builds"].add(os_version)
             grouped[key]["cpu_info"] = cpu_model
+            grouped[key]["cpu_cores"] = cpu_cores
             grouped[key]["platform"] = platform
             grouped[key]["architecture"] = cpu_arch
         except (KeyError, TypeError) as e:
@@ -191,6 +197,7 @@ def build_coverage_matrix(results: list) -> dict[str, list[CoverageCell]]:
             benchmark=benchmark,
             os_builds=data["os_builds"],
             cpu_info=data["cpu_info"],
+            cpu_cores=data["cpu_cores"],
             architecture=data["architecture"]
         )
         cells_by_platform[platform].append(cell)
@@ -198,7 +205,18 @@ def build_coverage_matrix(results: list) -> dict[str, list[CoverageCell]]:
     return dict(cells_by_platform)
 
 def calculate_summary(cells_by_platform: dict[str, list[CoverageCell]]) -> dict:
-    """Generate executive summary from coverage matrix"""
+    """
+    Generate executive summary from coverage matrix.
+
+    Note: A similar function exists in visualize_test_coverage.py for static HTML
+    generation. The implementations differ because:
+    - This works with CoverageCell objects; visualize_test_coverage.py uses nested dicts
+    - This ranks by benchmark count; visualize_test_coverage.py ranks by viable coverage
+    - This serves the real-time API; visualize_test_coverage.py generates static reports
+
+    If the core definition of "critical gap" or "recommended system" changes,
+    both implementations must be updated.
+    """
 
     all_cells = [cell for cells_list in cells_by_platform.values() for cell in cells_list]
 
@@ -222,23 +240,65 @@ def calculate_summary(cells_by_platform: dict[str, list[CoverageCell]]) -> dict:
     ]
 
     # Find best systems (most benchmarks with good coverage >= 3 builds)
-    system_scores = defaultdict(int)
+    system_scores = defaultdict(lambda: {'count': 0, 'benchmarks': set(), 'metadata': None})
     for cell in all_cells:
         if cell.build_count >= 3:
-            system_scores[cell.system] += 1
+            system_scores[cell.system]['count'] += 1
+            system_scores[cell.system]['benchmarks'].add(cell.benchmark)
+
+            # Store metadata from first occurrence
+            if system_scores[cell.system]['metadata'] is None:
+                system_scores[cell.system]['metadata'] = {
+                    'platform': cell.platform,
+                    'cpu_info': cell.cpu_info,
+                    'cpu_cores': cell.cpu_cores,
+                    'architecture': cell.architecture
+                }
+            else:
+                # Validate metadata consistency
+                # Note: Same system name can have different CPUs in rare cases
+                # (e.g., early AWS Intel instances where one instance type could be
+                # provisioned with one of two different CPU models)
+                existing = system_scores[cell.system]['metadata']
+                if (existing['cpu_info'] != cell.cpu_info or
+                    existing['cpu_cores'] != cell.cpu_cores):
+                    logger.warning(
+                        f"Metadata inconsistency for system '{cell.system}': "
+                        f"existing CPU='{existing['cpu_info']}' ({existing['cpu_cores']} cores), "
+                        f"found CPU='{cell.cpu_info}' ({cell.cpu_cores} cores). "
+                        f"Using first occurrence."
+                    )
 
     top_systems = sorted(
         system_scores.items(),
-        key=lambda x: x[1],
+        key=lambda x: (x[1]['count'], len(x[1]['benchmarks'])),
         reverse=True
     )[:3]
+
+    # Format recommended systems with metadata
+    recommended_systems = []
+    for system_name, stats in top_systems:
+        meta = stats['metadata'] or {}
+
+        recommended_systems.append([
+            system_name,
+            {
+                'total': stats['count'],
+                'viable': stats['count'],  # All counted items have >= 3 builds, so viable
+                'benchmarks': list(stats['benchmarks']),
+                'platform': meta.get('platform', 'unknown'),
+                'cpu_model': meta.get('cpu_info', 'Unknown CPU'),
+                'cores': meta.get('cpu_cores', 0),
+                'arch': meta.get('architecture', 'unknown')
+            }
+        ])
 
     return {
         "coverage_score": round(coverage_score, 1),
         "total_combinations": len(all_cells),
         "viable_combinations": len(viable),
         "critical_gaps": gaps,
-        "recommended_systems": [sys for sys, _ in top_systems],
+        "recommended_systems": recommended_systems,
         "generated_at": datetime.now().isoformat()
     }
 

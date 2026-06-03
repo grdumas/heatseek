@@ -197,9 +197,23 @@ def build_coverage_matrix(docs):
 
     return matrix, sorted(benchmarks), platform_stats, system_metadata
 
-def calculate_executive_summary(matrix, benchmarks):
+def calculate_executive_summary(matrix, benchmarks, system_metadata):
     """
     Calculate executive summary metrics for the dashboard.
+
+    Note: A similar function exists in server.py for the real-time API.
+    The implementations differ because:
+    - This works with nested dict matrix; server.py uses CoverageCell objects
+    - This ranks by viable coverage; server.py ranks by benchmark count
+    - This generates static HTML reports; server.py serves the live API
+
+    If the core definition of "critical gap" or "recommended system" changes,
+    both implementations must be updated.
+
+    Args:
+    - matrix: Coverage matrix keyed by platform/system/benchmark
+    - benchmarks: List of all benchmarks
+    - system_metadata: Metadata about each system (platform, CPU, cores, arch)
 
     Returns:
     - coverage_score: % of system×benchmark combos with 2+ OS builds
@@ -253,22 +267,43 @@ def calculate_executive_summary(matrix, benchmarks):
     strong = sorted(system_benchmark_coverage, key=lambda x: x['os_count'], reverse=True)[:3]
 
     # Generate recommendation based on systems with best coverage
-    system_scores = defaultdict(lambda: {'total': 0, 'viable': 0, 'benchmarks': set()})
+    system_scores = defaultdict(lambda: {'total': 0, 'viable': 0, 'benchmarks': set(), 'platforms': set()})
 
     for platform, systems in matrix.items():
         for system, benchmark_dict in systems.items():
             for benchmark, os_builds in benchmark_dict.items():
                 system_scores[system]['total'] += 1
                 system_scores[system]['benchmarks'].add(benchmark)
+                system_scores[system]['platforms'].add(platform)
                 if len(os_builds) >= 2:
                     system_scores[system]['viable'] += 1
 
     # Rank by both viable coverage and benchmark diversity
-    ranked_systems = sorted(
+    ranked_systems_raw = sorted(
         system_scores.items(),
         key=lambda x: (x[1]['viable'], len(x[1]['benchmarks'])),
         reverse=True
     )[:3]
+
+    # Enrich with platform and CPU metadata
+    ranked_systems = []
+    for system_name, stats in ranked_systems_raw:
+        # Find platform and metadata for this system
+        platform = list(stats['platforms'])[0] if stats['platforms'] else 'unknown'
+        metadata = system_metadata.get(platform, {}).get(system_name, {})
+
+        ranked_systems.append((
+            system_name,
+            {
+                'total': stats['total'],
+                'viable': stats['viable'],
+                'benchmarks': stats['benchmarks'],
+                'platform': platform,
+                'cpu_model': metadata.get('full_model', 'Unknown CPU'),
+                'cores': metadata.get('cores', 0),
+                'arch': metadata.get('arch', 'unknown')
+            }
+        ))
 
     return {
         'overall_score': overall_score,
@@ -286,7 +321,7 @@ def generate_html_visualization(matrix, benchmarks, platform_stats, system_metad
 
     # Calculate executive summary
     print("📈 Calculating executive summary...")
-    summary = calculate_executive_summary(matrix, benchmarks)
+    summary = calculate_executive_summary(matrix, benchmarks, system_metadata)
 
     # Build HTML with embedded Plotly
     html_parts = []

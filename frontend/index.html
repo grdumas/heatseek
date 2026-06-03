@@ -275,6 +275,68 @@
             color: #6c757d;
             font-style: italic;
         }
+
+        .executive-summary {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .summary-header {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #2E7D32;
+        }
+
+        .summary-header h2 {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+        }
+
+        .insight-section {
+            margin-bottom: 20px;
+        }
+
+        .insight-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .insight-section h3 {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .insight-item {
+            padding: 10px 15px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .insight-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .critical-gap {
+            border-left: 4px solid #dc3545;
+        }
+
+        .recommendation {
+            border-left: 4px solid #1976D2;
+            padding: 12px 15px;
+        }
+
+        .no-issues {
+            color: #2E7D32;
+            font-style: italic;
+            padding: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -286,6 +348,18 @@
                 <div class="loading">
                     <div class="spinner"></div>
                     Loading summary...
+                </div>
+            </div>
+        </div>
+
+        <div class="executive-summary">
+            <div class="summary-header">
+                <h2>Executive Summary</h2>
+            </div>
+            <div id="summaryInsights">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading insights...
                 </div>
             </div>
         </div>
@@ -472,10 +546,14 @@
                     const updateTime = new Date(summary.generated_at);
                     document.getElementById('lastUpdate').textContent =
                         `Updated: ${updateTime.toLocaleTimeString()}`;
+
+                    // Render executive summary insights
+                    this.renderExecutiveSummary(summary);
                 } catch (error) {
                     this.showError('Failed to load summary: ' + error.message);
                     // Clear loading spinner on error
                     this.setLoadingMessage('summary', 'Failed to load summary');
+                    this.setLoadingMessage('summaryInsights', 'Failed to load insights');
                     document.getElementById('lastUpdate').textContent = 'Error loading data';
                 }
             }
@@ -760,6 +838,106 @@
                 }
 
                 document.getElementById('filterStatus').textContent = status;
+            }
+
+            renderExecutiveSummary(summaryData) {
+                const container = document.getElementById('summaryInsights');
+                container.textContent = ''; // Clear loading state
+
+                // Critical Gaps Section
+                const gapsSection = document.createElement('div');
+                gapsSection.className = 'insight-section';
+
+                const gapsHeader = document.createElement('h3');
+                gapsHeader.textContent = 'Critical Coverage Gaps';
+                gapsSection.appendChild(gapsHeader);
+
+                if (summaryData.critical_gaps && summaryData.critical_gaps.length > 0) {
+                    summaryData.critical_gaps.forEach(gap => {
+                        const gapItem = document.createElement('div');
+                        gapItem.className = 'insight-item critical-gap';
+                        gapItem.textContent = `${gap}: No viable test coverage (need 2+ OS builds for regression detection)`;
+                        gapsSection.appendChild(gapItem);
+                    });
+                } else {
+                    const noGaps = document.createElement('div');
+                    noGaps.className = 'no-issues';
+                    noGaps.textContent = 'No critical gaps - all platforms have viable coverage';
+                    gapsSection.appendChild(noGaps);
+                }
+
+                container.appendChild(gapsSection);
+
+                // Recommendations Section
+                const recsSection = document.createElement('div');
+                recsSection.className = 'insight-section';
+
+                const recsHeader = document.createElement('h3');
+                recsHeader.textContent = 'Recommended Systems';
+                recsSection.appendChild(recsHeader);
+
+                if (summaryData.recommended_systems && summaryData.recommended_systems.length > 0) {
+                    const recsDesc = document.createElement('p');
+                    recsDesc.style.marginBottom = '10px';
+                    recsDesc.style.fontSize = '14px';
+                    recsDesc.style.color = '#6c757d';
+                    recsDesc.textContent = 'These systems have the best test coverage across multiple benchmarks:';
+                    recsSection.appendChild(recsDesc);
+
+                    summaryData.recommended_systems.forEach(([systemName, stats]) => {
+                        const recItem = document.createElement('div');
+                        recItem.className = 'insight-item recommendation';
+
+                        // Line 1: System name (bold, larger)
+                        const systemNameDiv = document.createElement('div');
+                        systemNameDiv.style.fontWeight = 'bold';
+                        systemNameDiv.style.fontSize = '15px';
+                        systemNameDiv.style.marginBottom = '4px';
+                        systemNameDiv.textContent = systemName;
+                        recItem.appendChild(systemNameDiv);
+
+                        // Line 2: Platform • CPU • Cores • Architecture (smaller, gray)
+                        const metadataDiv = document.createElement('div');
+                        metadataDiv.style.fontSize = '13px';
+                        metadataDiv.style.color = '#6c757d';
+                        metadataDiv.style.marginBottom = '4px';
+
+                        // Simplify CPU model for display
+                        let cpuDisplay = stats.cpu_model;
+                        const isTruncated = cpuDisplay.length > 40;
+                        if (isTruncated) {
+                            cpuDisplay = cpuDisplay.substring(0, 37) + '...';
+                        }
+
+                        const metadataText = `${stats.platform} • ${cpuDisplay} • ${stats.cores} cores • ${stats.arch}`;
+                        metadataDiv.textContent = metadataText;
+
+                        // Add tooltip with full CPU model if truncated
+                        if (isTruncated) {
+                            metadataDiv.title = `${stats.platform} • ${stats.cpu_model} • ${stats.cores} cores • ${stats.arch}`;
+                            metadataDiv.style.cursor = 'help';
+                        }
+
+                        recItem.appendChild(metadataDiv);
+
+                        // Line 3: Coverage stats
+                        const coverageDiv = document.createElement('div');
+                        coverageDiv.style.fontSize = '13px';
+                        coverageDiv.style.color = '#495057';
+                        const benchmarkCount = Array.isArray(stats.benchmarks) ? stats.benchmarks.length : 0;
+                        coverageDiv.textContent = `${stats.viable} viable tests across ${benchmarkCount} benchmarks`;
+                        recItem.appendChild(coverageDiv);
+
+                        recsSection.appendChild(recItem);
+                    });
+                } else {
+                    const noRecs = document.createElement('div');
+                    noRecs.className = 'no-issues';
+                    noRecs.textContent = 'Insufficient data for recommendations';
+                    recsSection.appendChild(noRecs);
+                }
+
+                container.appendChild(recsSection);
             }
 
             setupEventListeners() {

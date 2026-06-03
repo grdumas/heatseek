@@ -67,7 +67,7 @@ async def get_coverage_data():
 
         matrix, benchmarks, platform_stats, system_metadata = build_coverage_matrix(docs)
 
-        executive_summary = calculate_executive_summary(matrix, benchmarks)
+        executive_summary = calculate_executive_summary(matrix, benchmarks, system_metadata)
 
         def serialize_summary(summary):
             """Convert sets in executive summary to lists for JSON serialization."""
@@ -77,7 +77,11 @@ async def get_coverage_data():
                     (system, {
                         'total': stats['total'],
                         'viable': stats['viable'],
-                        'benchmarks': list(stats['benchmarks'])
+                        'benchmarks': list(stats['benchmarks']),
+                        'platform': stats.get('platform', 'unknown'),
+                        'cpu_model': stats.get('cpu_model', 'Unknown CPU'),
+                        'cores': stats.get('cores', 0),
+                        'arch': stats.get('arch', 'unknown')
                     })
                     for system, stats in serialized['recommended_systems']
                 ]
