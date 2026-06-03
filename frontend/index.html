@@ -172,6 +172,18 @@
             color: #6c757d;
             font-size: 13px;
             margin-top: auto;
+            transition: background-color 0.3s ease;
+        }
+
+        .last-update.pulse {
+            background-color: #c8e6c9;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        @keyframes timestamp-pulse {
+            0%, 100% { background-color: transparent; }
+            50% { background-color: #c8e6c9; }
         }
 
         .tabs {
@@ -576,8 +588,11 @@
                     });
 
                     const updateTime = new Date(summary.generated_at);
-                    document.getElementById('lastUpdate').textContent =
-                        `Updated: ${updateTime.toLocaleTimeString()}`;
+                    const lastUpdateEl = document.getElementById('lastUpdate');
+                    lastUpdateEl.textContent = `Updated: ${updateTime.toLocaleTimeString()}`;
+
+                    // Pulse timestamp to show update occurred
+                    this.pulseTimestamp();
 
                     // Render executive summary insights
                     this.renderExecutiveSummary(summary);
@@ -1036,6 +1051,16 @@
                     clearInterval(this.autoRefreshInterval);
                     this.autoRefreshInterval = null;
                 }
+            }
+
+            pulseTimestamp() {
+                const lastUpdateEl = document.getElementById('lastUpdate');
+                lastUpdateEl.classList.add('pulse');
+
+                // Remove pulse class after animation completes
+                setTimeout(() => {
+                    lastUpdateEl.classList.remove('pulse');
+                }, 600);
             }
         }
 
