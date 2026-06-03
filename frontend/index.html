@@ -170,6 +170,27 @@
             border-color: #2E7D32;
         }
 
+        .platform-summary {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        .platform-summary .summary {
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        }
+
+        .platform-summary .metric {
+            border-left-color: #1976D2;
+        }
+
+        .platform-summary .metric-value {
+            color: #1976D2;
+            font-size: 32px;
+        }
+
         #heatmap {
             background: white;
             padding: 20px;
