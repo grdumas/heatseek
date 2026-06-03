@@ -112,17 +112,16 @@ class CoverageQuery:
         self.client = client
         self.index = OPENSEARCH_CONFIG["index"]
 
-    def get_all_results(self, days_back: int = 90) -> list:
-        """Fetch all test results from last N days"""
+    def get_all_results(self, days_back: Optional[int] = None) -> list:
+        """
+        Fetch all test results (optionally filtered by date range)
+
+        Args:
+            days_back: If provided, only fetch results from last N days.
+                      If None, fetch all historical data.
+        """
         query = {
             "size": 10000,
-            "query": {
-                "range": {
-                    "metadata.test_timestamp": {
-                        "gte": f"now-{days_back}d/d"
-                    }
-                }
-            },
             "_source": [
                 "metadata.cloud_provider",
                 "metadata.instance_type",
@@ -132,6 +131,16 @@ class CoverageQuery:
                 "test.name"
             ]
         }
+
+        # Optionally filter by date range
+        if days_back is not None:
+            query["query"] = {
+                "range": {
+                    "metadata.test_timestamp": {
+                        "gte": f"now-{days_back}d/d"
+                    }
+                }
+            }
 
         try:
             response = self.client.search(index=self.index, body=query)
@@ -234,23 +243,31 @@ def calculate_summary(cells_by_platform: dict[str, list[CoverageCell]]) -> dict:
     }
 
 # ============ Caching Layer ============
-def get_cache_key() -> str:
-    """Round current time to 30-second buckets for cache invalidation"""
+def get_cache_key(days_back: Optional[int] = None) -> str:
+    """
+    Round current time to 30-second buckets for cache invalidation
+    Include days_back in key to cache different time ranges separately
+    """
     now = datetime.now()
     bucket = now.replace(second=now.second // 30 * 30, microsecond=0)
-    return bucket.isoformat()
+    days_str = f"_{days_back}d" if days_back is not None else "_all"
+    return f"{bucket.isoformat()}{days_str}"
 
-@lru_cache(maxsize=1)
-def get_cached_data(cache_key: str) -> tuple[dict, dict]:
+@lru_cache(maxsize=10)
+def get_cached_data(cache_key: str, days_back: Optional[int] = None) -> tuple[dict, dict]:
     """
     Fetch and cache coverage data with 30-second TTL
     Returns: (coverage_matrix, summary)
+
+    Args:
+        cache_key: Time-based cache key
+        days_back: Optional date filter (None = all historical data)
     """
-    logger.info(f"Cache miss - fetching fresh data (key: {cache_key})")
+    logger.info(f"Cache miss - fetching fresh data (key: {cache_key}, days_back: {days_back or 'all'})")
     try:
         client = get_opensearch_client()
         query = CoverageQuery(client)
-        results = query.get_all_results()
+        results = query.get_all_results(days_back=days_back)
         matrix = build_coverage_matrix(results)
         summary = calculate_summary(matrix)
         return matrix, summary
@@ -269,7 +286,8 @@ async def get_coverage(
     platform: Optional[str] = None,
     benchmark: Optional[str] = None,
     architecture: Optional[str] = Query(None, pattern="^(x86_64|aarch64)$"),
-    min_builds: int = Query(0, ge=0, le=10)
+    min_builds: int = Query(0, ge=0, le=10),
+    days_back: Optional[int] = Query(None, ge=1, le=365, description="Filter to last N days (omit for all data)")
 ):
     """
     Get coverage matrix with optional filters
@@ -278,8 +296,9 @@ async def get_coverage(
     - **benchmark**: coremark, pyperf, streams, etc. (case-insensitive)
     - **architecture**: x86_64 or aarch64
     - **min_builds**: Hide systems with fewer OS builds (0-10)
+    - **days_back**: Only show data from last N days (omit to show all historical data)
     """
-    matrix, _ = get_cached_data(get_cache_key())
+    matrix, _ = get_cached_data(get_cache_key(days_back), days_back)
 
     # Apply filters
     filtered = {}
@@ -301,7 +320,9 @@ async def get_coverage(
     return filtered
 
 @app.get("/api/summary")
-async def get_summary():
+async def get_summary(
+    days_back: Optional[int] = Query(None, ge=1, le=365, description="Filter to last N days (omit for all data)")
+):
     """
     Get executive summary with coverage score and recommendations
 
@@ -311,8 +332,11 @@ async def get_summary():
     - viable_combinations: Pairs with 2+ OS builds (regression-capable)
     - critical_gaps: Platforms with zero viable coverage
     - recommended_systems: Top 3 systems by benchmark diversity
+
+    Query params:
+    - **days_back**: Only analyze data from last N days (omit to analyze all historical data)
     """
-    _, summary = get_cached_data(get_cache_key())
+    _, summary = get_cached_data(get_cache_key(days_back), days_back)
     return summary
 
 @app.post("/api/refresh")
@@ -333,9 +357,16 @@ async def force_refresh():
     }
 
 @app.get("/api/benchmarks")
-async def get_benchmarks():
-    """Get list of all available benchmarks for filter dropdown"""
-    matrix, _ = get_cached_data(get_cache_key())
+async def get_benchmarks(
+    days_back: Optional[int] = Query(None, ge=1, le=365, description="Filter to last N days (omit for all data)")
+):
+    """
+    Get list of all available benchmarks for filter dropdown
+
+    Query params:
+    - **days_back**: Only show benchmarks from last N days (omit for all historical data)
+    """
+    matrix, _ = get_cached_data(get_cache_key(days_back), days_back)
     all_cells = [cell for cells in matrix.values() for cell in cells]
     benchmarks = sorted(set(c.benchmark for c in all_cells))
     return {"benchmarks": benchmarks}
