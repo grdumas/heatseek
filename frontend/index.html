@@ -261,6 +261,20 @@
             margin-bottom: 20px;
             border-left: 4px solid #dc3545;
         }
+
+        .filter-status-container {
+            background: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .filter-status {
+            font-size: 13px;
+            color: #6c757d;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -303,6 +317,10 @@
             </button>
 
             <span class="last-update" id="lastUpdate" aria-live="polite" aria-atomic="true">Loading...</span>
+        </div>
+
+        <div class="filter-status-container">
+            <span class="filter-status" id="filterStatus">Loading...</span>
         </div>
 
         <div id="errorContainer"></div>
