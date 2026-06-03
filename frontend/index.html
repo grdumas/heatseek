@@ -987,6 +987,14 @@
                     this.filters.min_builds = e.target.value;
                     this.loadCoverage();
                 });
+
+                document.getElementById('autoRefreshCheckbox').addEventListener('change', e => {
+                    if (e.target.checked) {
+                        this.startAutoRefresh();
+                    } else {
+                        this.stopAutoRefresh();
+                    }
+                });
             }
 
             async refresh() {
