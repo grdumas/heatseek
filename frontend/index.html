@@ -105,7 +105,8 @@
         }
 
         select:focus, input[type="number"]:focus {
-            outline: none;
+            outline: 2px solid #2E7D32;
+            outline-offset: 2px;
             border-color: #2E7D32;
         }
 
@@ -124,6 +125,11 @@
 
         .refresh-btn:hover {
             background: #1B5E20;
+        }
+
+        .refresh-btn:focus {
+            outline: 2px solid #1B5E20;
+            outline-offset: 2px;
         }
 
         .refresh-btn:active {
@@ -162,6 +168,11 @@
 
         .tab:hover {
             border-color: #2E7D32;
+        }
+
+        .tab:focus {
+            outline: 2px solid #2E7D32;
+            outline-offset: 2px;
         }
 
         .tab.active {
@@ -255,7 +266,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔥 HeatSeek Coverage Dashboard</h1>
+            <h1>HeatSeek Coverage Dashboard</h1>
             <p class="subtitle">Real-time RHEL performance test coverage analysis</p>
             <div class="summary" id="summary">
                 <div class="loading">
@@ -267,14 +278,14 @@
 
         <div class="filters">
             <div class="filter-group">
-                <label class="filter-label">Benchmark</label>
+                <label class="filter-label" for="benchmarkFilter">Benchmark</label>
                 <select id="benchmarkFilter">
                     <option value="">All Benchmarks</option>
                 </select>
             </div>
 
             <div class="filter-group">
-                <label class="filter-label">Architecture</label>
+                <label class="filter-label" for="archFilter">Architecture</label>
                 <select id="archFilter">
                     <option value="">All Architectures</option>
                     <option value="x86_64">x86_64</option>
@@ -283,28 +294,28 @@
             </div>
 
             <div class="filter-group">
-                <label class="filter-label">Min OS Builds</label>
+                <label class="filter-label" for="minBuilds">Min OS Builds</label>
                 <input type="number" id="minBuilds" min="0" max="10" value="0">
             </div>
 
             <button class="refresh-btn" id="refreshBtn" onclick="app.refresh()">
-                🔄 Refresh Data
+                Refresh Data
             </button>
 
-            <span class="last-update" id="lastUpdate">Loading...</span>
+            <span class="last-update" id="lastUpdate" aria-live="polite" aria-atomic="true">Loading...</span>
         </div>
 
         <div id="errorContainer"></div>
 
-        <div class="tabs" id="platformTabs"></div>
+        <div class="tabs" id="platformTabs" role="tablist" aria-label="Platform selection"></div>
 
-        <div class="platform-summary" id="platformSummary" style="display: none;">
+        <div class="platform-summary" id="platformSummary" role="tabpanel" style="display: none;">
             <div class="summary" style="margin: 0 0 20px 0;">
                 <!-- Platform-specific stats will be inserted here -->
             </div>
         </div>
 
-        <div id="heatmap">
+        <div id="heatmap" role="tabpanel">
             <div class="loading">
                 <div class="spinner"></div>
                 Loading coverage data...
@@ -482,14 +493,47 @@
                     const tabsContainer = document.getElementById('platformTabs');
                     tabsContainer.textContent = ''; // Clear existing tabs
 
-                    platforms.forEach(platform => {
+                    platforms.forEach((platform, index) => {
                         const button = document.createElement('button');
                         button.className = 'tab';
-                        if (platform === this.currentPlatform) {
+                        button.setAttribute('role', 'tab');
+                        button.setAttribute('aria-label', `${platform} platform`);
+                        button.setAttribute('aria-controls', 'platformSummary heatmap');
+
+                        const isActive = platform === this.currentPlatform;
+                        if (isActive) {
                             button.classList.add('active');
+                            button.setAttribute('aria-selected', 'true');
+                            button.setAttribute('tabindex', '0');
+                        } else {
+                            button.setAttribute('aria-selected', 'false');
+                            button.setAttribute('tabindex', '-1');
                         }
                         button.textContent = platform;
+
+                        // Mouse click
                         button.onclick = () => this.showPlatform(platform);
+
+                        // Keyboard navigation
+                        button.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                this.showPlatform(platform);
+                            } else if (e.key === 'ArrowRight') {
+                                e.preventDefault();
+                                const nextIndex = (index + 1) % platforms.length;
+                                const nextTab = tabsContainer.children[nextIndex];
+                                this.updateTabFocus(nextTab);
+                                nextTab.focus();
+                            } else if (e.key === 'ArrowLeft') {
+                                e.preventDefault();
+                                const prevIndex = (index - 1 + platforms.length) % platforms.length;
+                                const prevTab = tabsContainer.children[prevIndex];
+                                this.updateTabFocus(prevTab);
+                                prevTab.focus();
+                            }
+                        });
+
                         tabsContainer.appendChild(button);
                     });
 
@@ -507,6 +551,13 @@
                 }
             }
 
+            updateTabFocus(focusedTab) {
+                // Roving tabindex: only the focused tab is in tab order
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.setAttribute('tabindex', tab === focusedTab ? '0' : '-1');
+                });
+            }
+
             showPlatform(platform) {
                 this.currentPlatform = platform;
                 const cells = this.data[platform];
@@ -517,9 +568,12 @@
                     return;
                 }
 
-                // Update active tab
+                // Update active tab and ARIA states
                 document.querySelectorAll('.tab').forEach(tab => {
-                    tab.classList.toggle('active', tab.textContent === platform);
+                    const isActive = tab.textContent === platform;
+                    tab.classList.toggle('active', isActive);
+                    tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                    tab.setAttribute('tabindex', isActive ? '0' : '-1');
                 });
 
                 // Calculate platform statistics
@@ -650,7 +704,9 @@
                 };
 
                 // Clear loading spinner before rendering
-                document.getElementById('heatmap').textContent = '';
+                const heatmapElement = document.getElementById('heatmap');
+                heatmapElement.textContent = '';
+                heatmapElement.setAttribute('aria-label', `Coverage heatmap for ${platform}`);
                 Plotly.newPlot('heatmap', [trace], layout, config);
             }
 
