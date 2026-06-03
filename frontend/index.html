@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HeatSeek - Real-time Coverage Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            color: #2c3e50;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            color: #2E7D32;
+        }
+
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .metric {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 20px;
+            border-radius: 6px;
+            border-left: 4px solid #2E7D32;
+        }
+
+        .metric-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #2E7D32;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 13px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filters {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-label {
+            font-size: 12px;
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        select, input[type="number"] {
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+            min-width: 150px;
+        }
+
+        select:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #2E7D32;
+        }
+
+        .refresh-btn {
+            background: #2E7D32;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+            margin-top: auto;
+        }
+
+        .refresh-btn:hover {
+            background: #1B5E20;
+        }
+
+        .refresh-btn:active {
+            transform: scale(0.98);
+        }
+
+        .refresh-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .last-update {
+            margin-left: auto;
+            color: #6c757d;
+            font-size: 13px;
+            margin-top: auto;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            border-color: #2E7D32;
+        }
+
+        .tab.active {
+            background: #2E7D32;
+            color: white;
+            border-color: #2E7D32;
+        }
+
+        #heatmap {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #2E7D32;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔥 HeatSeek Coverage Dashboard</h1>
+            <p class="subtitle">Real-time RHEL performance test coverage analysis</p>
+            <div class="summary" id="summary">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading summary...
+                </div>
+            </div>
+        </div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label class="filter-label">Benchmark</label>
+                <select id="benchmarkFilter">
+                    <option value="">All Benchmarks</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">Architecture</label>
+                <select id="archFilter">
+                    <option value="">All Architectures</option>
+                    <option value="x86_64">x86_64</option>
+                    <option value="aarch64">aarch64</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">Min OS Builds</label>
+                <input type="number" id="minBuilds" min="0" max="10" value="0">
+            </div>
+
+            <button class="refresh-btn" id="refreshBtn" onclick="app.refresh()">
+                🔄 Refresh Data
+            </button>
+
+            <span class="last-update" id="lastUpdate">Loading...</span>
+        </div>
+
+        <div id="errorContainer"></div>
+
+        <div class="tabs" id="platformTabs"></div>
+
+        <div id="heatmap">
+            <div class="loading">
+                <div class="spinner"></div>
+                Loading coverage data...
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #E0E0E0"></div>
+                <span>No Data (0 builds)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #FFF59D"></div>
+                <span>Insufficient (1 build)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #A5D6A7"></div>
+                <span>Minimal (2 builds)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #66BB6A"></div>
+                <span>Good (3-4 builds)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #2E7D32"></div>
+                <span>Excellent (5+ builds)</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class HeatSeekApp {
+            constructor() {
+                this.currentPlatform = null;
+                this.data = {};
+                this.filters = {};
+            }
+
+            async init() {
+                try {
+                    await this.loadBenchmarks();
+                    await this.loadSummary();
+                    await this.loadCoverage();
+                    this.setupEventListeners();
+                } catch (error) {
+                    this.showError('Failed to initialize dashboard: ' + error.message);
+                }
+            }
+
+            showError(message) {
+                const errorContainer = document.getElementById('errorContainer');
+                errorContainer.innerHTML = `<div class="error">${message}</div>`;
+            }
+
+            clearError() {
+                document.getElementById('errorContainer').innerHTML = '';
+            }
+
+            async loadBenchmarks() {
+                try {
+                    const response = await fetch('/api/benchmarks');
+                    const data = await response.json();
+                    const select = document.getElementById('benchmarkFilter');
+
+                    data.benchmarks.forEach(benchmark => {
+                        const option = document.createElement('option');
+                        option.value = benchmark;
+                        option.textContent = benchmark;
+                        select.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Failed to load benchmarks:', error);
+                }
+            }
+
+            async loadSummary() {
+                try {
+                    const response = await fetch('/api/summary');
+                    const summary = await response.json();
+
+                    document.getElementById('summary').innerHTML = `
+                        <div class="metric">
+                            <div class="metric-value">${summary.coverage_score}%</div>
+                            <div class="metric-label">Coverage Score</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value">${summary.viable_combinations}</div>
+                            <div class="metric-label">Viable for Regression</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value">${summary.total_combinations}</div>
+                            <div class="metric-label">Total Combinations</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value">${summary.critical_gaps.length}</div>
+                            <div class="metric-label">Critical Gaps</div>
+                        </div>
+                    `;
+
+                    const updateTime = new Date(summary.generated_at);
+                    document.getElementById('lastUpdate').innerText =
+                        `Updated: ${updateTime.toLocaleTimeString()}`;
+                } catch (error) {
+                    this.showError('Failed to load summary: ' + error.message);
+                }
+            }
+
+            async loadCoverage() {
+                try {
+                    this.clearError();
+                    const params = new URLSearchParams(this.filters);
+                    const response = await fetch(`/api/coverage?${params}`);
+                    const data = await response.json();
+
+                    this.data = data;
+
+                    // Create platform tabs
+                    const platforms = Object.keys(data).sort();
+                    if (platforms.length === 0) {
+                        document.getElementById('heatmap').innerHTML =
+                            '<div class="loading">No data matches current filters</div>';
+                        document.getElementById('platformTabs').innerHTML = '';
+                        return;
+                    }
+
+                    document.getElementById('platformTabs').innerHTML = platforms.map(p =>
+                        `<button class="tab ${p === this.currentPlatform ? 'active' : ''}"
+                                 onclick="app.showPlatform('${p}')">${p}</button>`
+                    ).join('');
+
+                    // Show first platform if none selected
+                    if (!this.currentPlatform || !platforms.includes(this.currentPlatform)) {
+                        this.showPlatform(platforms[0]);
+                    } else {
+                        this.showPlatform(this.currentPlatform);
+                    }
+                } catch (error) {
+                    this.showError('Failed to load coverage data: ' + error.message);
+                }
+            }
+
+            showPlatform(platform) {
+                this.currentPlatform = platform;
+                const cells = this.data[platform];
+
+                if (!cells || cells.length === 0) {
+                    document.getElementById('heatmap').innerHTML =
+                        '<div class="loading">No data for this platform</div>';
+                    return;
+                }
+
+                // Update active tab
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.classList.toggle('active', tab.textContent === platform);
+                });
+
+                // Build heatmap matrix
+                const systems = [...new Set(cells.map(c => c.system))].sort();
+                const benchmarks = [...new Set(cells.map(c => c.benchmark))].sort();
+
+                // Build z-values (build counts) and colors
+                const z = [];
+                const colors = [];
+                const hovertext = [];
+
+                benchmarks.forEach(bench => {
+                    const row = [];
+                    const colorRow = [];
+                    const hoverRow = [];
+
+                    systems.forEach(sys => {
+                        const cell = cells.find(c => c.system === sys && c.benchmark === bench);
+                        if (cell) {
+                            row.push(cell.build_count);
+                            colorRow.push(cell.color);
+                            hoverRow.push(
+                                `<b>${sys}</b><br>` +
+                                `<b>${bench}</b><br>` +
+                                `OS Builds: ${cell.build_count}<br>` +
+                                `Versions: ${cell.os_builds.join(', ')}<br>` +
+                                `CPU: ${cell.cpu_info}<br>` +
+                                `Arch: ${cell.architecture}<br>` +
+                                `Viable: ${cell.viable ? 'Yes' : 'No'}`
+                            );
+                        } else {
+                            row.push(0);
+                            colorRow.push('#E0E0E0');
+                            hoverRow.push('No data');
+                        }
+                    });
+
+                    z.push(row);
+                    colors.push(colorRow);
+                    hovertext.push(hoverRow);
+                });
+
+                // Create custom colorscale based on our color codes
+                const trace = {
+                    z: z,
+                    x: systems,
+                    y: benchmarks,
+                    type: 'heatmap',
+                    colorscale: [
+                        [0, '#E0E0E0'],
+                        [0.2, '#FFF59D'],
+                        [0.4, '#A5D6A7'],
+                        [0.7, '#66BB6A'],
+                        [1, '#2E7D32']
+                    ],
+                    hovertext: hovertext,
+                    hoverinfo: 'text',
+                    showscale: true,
+                    colorbar: {
+                        title: 'OS Builds',
+                        thickness: 15,
+                        len: 0.5
+                    }
+                };
+
+                const layout = {
+                    title: `${platform} Coverage Matrix`,
+                    xaxis: {
+                        title: 'System / Instance Type',
+                        tickangle: -45,
+                        automargin: true
+                    },
+                    yaxis: {
+                        title: 'Benchmark',
+                        automargin: true
+                    },
+                    height: Math.max(500, benchmarks.length * 25 + 150),
+                    margin: { l: 150, r: 100, t: 80, b: 200 },
+                    plot_bgcolor: '#f8f9fa',
+                    paper_bgcolor: 'white'
+                };
+
+                const config = {
+                    responsive: true,
+                    displayModeBar: true,
+                    displaylogo: false,
+                    modeBarButtonsToRemove: ['lasso2d', 'select2d']
+                };
+
+                Plotly.newPlot('heatmap', [trace], layout, config);
+            }
+
+            setupEventListeners() {
+                document.getElementById('benchmarkFilter').addEventListener('change', e => {
+                    this.filters.benchmark = e.target.value;
+                    this.loadCoverage();
+                });
+
+                document.getElementById('archFilter').addEventListener('change', e => {
+                    this.filters.architecture = e.target.value;
+                    this.loadCoverage();
+                });
+
+                document.getElementById('minBuilds').addEventListener('change', e => {
+                    this.filters.min_builds = e.target.value;
+                    this.loadCoverage();
+                });
+            }
+
+            async refresh() {
+                const btn = document.getElementById('refreshBtn');
+                btn.disabled = true;
+                btn.textContent = '🔄 Refreshing...';
+
+                try {
+                    await fetch('/api/refresh', { method: 'POST' });
+                    await this.loadSummary();
+                    await this.loadCoverage();
+                    this.clearError();
+                } catch (error) {
+                    this.showError('Failed to refresh: ' + error.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = '🔄 Refresh Data';
+                }
+            }
+        }
+
+        // Initialize app on page load
+        const app = new HeatSeekApp();
+        document.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>
