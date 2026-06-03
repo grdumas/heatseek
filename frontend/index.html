@@ -835,6 +835,66 @@
                 document.getElementById('filterStatus').textContent = status;
             }
 
+            renderExecutiveSummary(summaryData) {
+                const container = document.getElementById('summaryInsights');
+                container.textContent = ''; // Clear loading state
+
+                // Critical Gaps Section
+                const gapsSection = document.createElement('div');
+                gapsSection.className = 'insight-section';
+
+                const gapsHeader = document.createElement('h3');
+                gapsHeader.textContent = 'Critical Coverage Gaps';
+                gapsSection.appendChild(gapsHeader);
+
+                if (summaryData.critical_gaps && summaryData.critical_gaps.length > 0) {
+                    summaryData.critical_gaps.forEach(gap => {
+                        const gapItem = document.createElement('div');
+                        gapItem.className = 'insight-item critical-gap';
+                        gapItem.textContent = `${gap}: No viable test coverage (need 2+ OS builds for regression detection)`;
+                        gapsSection.appendChild(gapItem);
+                    });
+                } else {
+                    const noGaps = document.createElement('div');
+                    noGaps.className = 'no-issues';
+                    noGaps.textContent = 'No critical gaps - all platforms have viable coverage';
+                    gapsSection.appendChild(noGaps);
+                }
+
+                container.appendChild(gapsSection);
+
+                // Recommendations Section
+                const recsSection = document.createElement('div');
+                recsSection.className = 'insight-section';
+
+                const recsHeader = document.createElement('h3');
+                recsHeader.textContent = 'Recommended Systems';
+                recsSection.appendChild(recsHeader);
+
+                if (summaryData.recommended_systems && summaryData.recommended_systems.length > 0) {
+                    const recsDesc = document.createElement('p');
+                    recsDesc.style.marginBottom = '10px';
+                    recsDesc.style.fontSize = '14px';
+                    recsDesc.style.color = '#6c757d';
+                    recsDesc.textContent = 'These systems have the best test coverage across multiple benchmarks:';
+                    recsSection.appendChild(recsDesc);
+
+                    summaryData.recommended_systems.forEach(system => {
+                        const recItem = document.createElement('div');
+                        recItem.className = 'insight-item recommendation';
+                        recItem.textContent = system;
+                        recsSection.appendChild(recItem);
+                    });
+                } else {
+                    const noRecs = document.createElement('div');
+                    noRecs.className = 'no-issues';
+                    noRecs.textContent = 'Insufficient data for recommendations';
+                    recsSection.appendChild(noRecs);
+                }
+
+                container.appendChild(recsSection);
+            }
+
             setupEventListeners() {
                 document.getElementById('benchmarkFilter').addEventListener('change', e => {
                     this.filters.benchmark = e.target.value;
