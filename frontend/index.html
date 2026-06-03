@@ -267,15 +267,15 @@
 
         <div class="filters">
             <div class="filter-group">
-                <label class="filter-label">Benchmark</label>
-                <select id="benchmarkFilter">
+                <label class="filter-label" for="benchmarkFilter">Benchmark</label>
+                <select id="benchmarkFilter" aria-label="Filter by benchmark">
                     <option value="">All Benchmarks</option>
                 </select>
             </div>
 
             <div class="filter-group">
-                <label class="filter-label">Architecture</label>
-                <select id="archFilter">
+                <label class="filter-label" for="archFilter">Architecture</label>
+                <select id="archFilter" aria-label="Filter by architecture">
                     <option value="">All Architectures</option>
                     <option value="x86_64">x86_64</option>
                     <option value="aarch64">aarch64</option>
@@ -283,8 +283,8 @@
             </div>
 
             <div class="filter-group">
-                <label class="filter-label">Min OS Builds</label>
-                <input type="number" id="minBuilds" min="0" max="10" value="0">
+                <label class="filter-label" for="minBuilds">Min OS Builds</label>
+                <input type="number" id="minBuilds" min="0" max="10" value="0" aria-label="Minimum OS builds filter">
             </div>
 
             <button class="refresh-btn" id="refreshBtn" onclick="app.refresh()">
@@ -296,7 +296,7 @@
 
         <div id="errorContainer"></div>
 
-        <div class="tabs" id="platformTabs"></div>
+        <div class="tabs" id="platformTabs" role="tablist" aria-label="Platform selection"></div>
 
         <div class="platform-summary" id="platformSummary" style="display: none;">
             <div class="summary" style="margin: 0 0 20px 0;">
@@ -485,9 +485,14 @@
                     platforms.forEach((platform, index) => {
                         const button = document.createElement('button');
                         button.className = 'tab';
+                        button.setAttribute('role', 'tab');
                         button.setAttribute('tabindex', '0');
+                        button.setAttribute('aria-label', `${platform} platform`);
                         if (platform === this.currentPlatform) {
                             button.classList.add('active');
+                            button.setAttribute('aria-selected', 'true');
+                        } else {
+                            button.setAttribute('aria-selected', 'false');
                         }
                         button.textContent = platform;
 
@@ -537,9 +542,11 @@
                     return;
                 }
 
-                // Update active tab
+                // Update active tab and ARIA states
                 document.querySelectorAll('.tab').forEach(tab => {
-                    tab.classList.toggle('active', tab.textContent === platform);
+                    const isActive = tab.textContent === platform;
+                    tab.classList.toggle('active', isActive);
+                    tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
                 });
 
                 // Calculate platform statistics
@@ -670,7 +677,9 @@
                 };
 
                 // Clear loading spinner before rendering
-                document.getElementById('heatmap').textContent = '';
+                const heatmapElement = document.getElementById('heatmap');
+                heatmapElement.textContent = '';
+                heatmapElement.setAttribute('aria-label', `Coverage heatmap for ${platform}`);
                 Plotly.newPlot('heatmap', [trace], layout, config);
             }
 
