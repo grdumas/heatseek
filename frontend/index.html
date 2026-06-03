@@ -754,9 +754,9 @@
 
                 let status;
                 if (activeFilters.length === 0) {
-                    status = `Showing all platforms (${platformCount} platforms, ${totalCells} combinations)`;
+                    status = `Showing all platforms (${platformCount} platforms, ${totalCells} benchmark coverage cells)`;
                 } else {
-                    status = `Filtered by ${activeFilters.join(', ')} (${platformCount} platforms, ${totalCells} combinations)`;
+                    status = `Filtered by ${activeFilters.join(', ')} (${platformCount} platforms, ${totalCells} benchmark coverage cells)`;
                 }
 
                 document.getElementById('filterStatus').textContent = status;
