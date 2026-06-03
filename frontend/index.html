@@ -623,6 +623,8 @@
                     modeBarButtonsToRemove: ['lasso2d', 'select2d']
                 };
 
+                // Clear loading spinner before rendering
+                document.getElementById('heatmap').innerHTML = '';
                 Plotly.newPlot('heatmap', [trace], layout, config);
             }
 
