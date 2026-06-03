@@ -261,6 +261,20 @@
             margin-bottom: 20px;
             border-left: 4px solid #dc3545;
         }
+
+        .filter-status-container {
+            background: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .filter-status {
+            font-size: 13px;
+            color: #6c757d;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -303,6 +317,10 @@
             </button>
 
             <span class="last-update" id="lastUpdate" aria-live="polite" aria-atomic="true">Loading...</span>
+        </div>
+
+        <div class="filter-status-container">
+            <span class="filter-status" id="filterStatus">Loading...</span>
         </div>
 
         <div id="errorContainer"></div>
@@ -366,6 +384,7 @@
                     this.setLoadingMessage('summary', 'Failed to load summary');
                     this.setLoadingMessage('heatmap', 'Failed to load data. See error message above.');
                     document.getElementById('lastUpdate').textContent = 'Error loading data';
+                    document.getElementById('filterStatus').textContent = 'Error loading data';
                 }
             }
 
@@ -543,6 +562,9 @@
                     } else {
                         this.showPlatform(this.currentPlatform);
                     }
+
+                    // Update filter status with current data
+                    this.updateFilterStatus();
                 } catch (error) {
                     this.showError('Failed to load coverage data: ' + error.message);
                     // Clear loading spinner on error
@@ -717,6 +739,27 @@
                 loadingDiv.className = 'loading';
                 loadingDiv.textContent = message;
                 element.appendChild(loadingDiv);
+            }
+
+            updateFilterStatus() {
+                const platformCount = Object.keys(this.data).length;
+                const totalCells = Object.values(this.data).reduce((sum, cells) => sum + cells.length, 0);
+
+                const activeFilters = [];
+                if (this.filters.benchmark) activeFilters.push(this.filters.benchmark);
+                if (this.filters.architecture) activeFilters.push(this.filters.architecture);
+                if (this.filters.min_builds && this.filters.min_builds > 0) {
+                    activeFilters.push(`${this.filters.min_builds}+ builds`);
+                }
+
+                let status;
+                if (activeFilters.length === 0) {
+                    status = `Showing all platforms (${platformCount} platforms, ${totalCells} benchmark coverage cells)`;
+                } else {
+                    status = `Filtered by ${activeFilters.join(', ')} (${platformCount} platforms, ${totalCells} benchmark coverage cells)`;
+                }
+
+                document.getElementById('filterStatus').textContent = status;
             }
 
             setupEventListeners() {
