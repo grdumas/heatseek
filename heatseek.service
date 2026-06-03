@@ -1,0 +1,33 @@
+[Unit]
+Description=HeatSeek Real-time Coverage Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=heatseek
+Group=heatseek
+WorkingDirectory=/opt/heatseek
+Environment="OPENSEARCH_HOST=your-opensearch-host.com"
+Environment="OPENSEARCH_PORT=443"
+Environment="OPENSEARCH_USERNAME=your-username"
+Environment="OPENSEARCH_PASSWORD=your-password"
+Environment="OPENSEARCH_INDEX=zathras-results"
+
+# Use virtual environment python
+ExecStart=/opt/heatseek/venv/bin/uvicorn server:app --host 127.0.0.1 --port 8080 --workers 2
+
+# Restart policy
+Restart=always
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=heatseek
+
+[Install]
+WantedBy=multi-user.target
