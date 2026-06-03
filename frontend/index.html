@@ -384,6 +384,7 @@
                     this.setLoadingMessage('summary', 'Failed to load summary');
                     this.setLoadingMessage('heatmap', 'Failed to load data. See error message above.');
                     document.getElementById('lastUpdate').textContent = 'Error loading data';
+                    document.getElementById('filterStatus').textContent = 'Error loading data';
                 }
             }
 
@@ -561,6 +562,9 @@
                     } else {
                         this.showPlatform(this.currentPlatform);
                     }
+
+                    // Update filter status with current data
+                    this.updateFilterStatus();
                 } catch (error) {
                     this.showError('Failed to load coverage data: ' + error.message);
                     // Clear loading spinner on error
