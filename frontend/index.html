@@ -497,14 +497,17 @@
                         const button = document.createElement('button');
                         button.className = 'tab';
                         button.setAttribute('role', 'tab');
-                        button.setAttribute('tabindex', '0');
                         button.setAttribute('aria-label', `${platform} platform`);
                         button.setAttribute('aria-controls', 'platformSummary heatmap');
-                        if (platform === this.currentPlatform) {
+
+                        const isActive = platform === this.currentPlatform;
+                        if (isActive) {
                             button.classList.add('active');
                             button.setAttribute('aria-selected', 'true');
+                            button.setAttribute('tabindex', '0');
                         } else {
                             button.setAttribute('aria-selected', 'false');
+                            button.setAttribute('tabindex', '-1');
                         }
                         button.textContent = platform;
 
@@ -519,11 +522,15 @@
                             } else if (e.key === 'ArrowRight') {
                                 e.preventDefault();
                                 const nextIndex = (index + 1) % platforms.length;
-                                tabsContainer.children[nextIndex].focus();
+                                const nextTab = tabsContainer.children[nextIndex];
+                                this.updateTabFocus(nextTab);
+                                nextTab.focus();
                             } else if (e.key === 'ArrowLeft') {
                                 e.preventDefault();
                                 const prevIndex = (index - 1 + platforms.length) % platforms.length;
-                                tabsContainer.children[prevIndex].focus();
+                                const prevTab = tabsContainer.children[prevIndex];
+                                this.updateTabFocus(prevTab);
+                                prevTab.focus();
                             }
                         });
 
@@ -544,6 +551,13 @@
                 }
             }
 
+            updateTabFocus(focusedTab) {
+                // Roving tabindex: only the focused tab is in tab order
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.setAttribute('tabindex', tab === focusedTab ? '0' : '-1');
+                });
+            }
+
             showPlatform(platform) {
                 this.currentPlatform = platform;
                 const cells = this.data[platform];
@@ -559,6 +573,7 @@
                     const isActive = tab.textContent === platform;
                     tab.classList.toggle('active', isActive);
                     tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                    tab.setAttribute('tabindex', isActive ? '0' : '-1');
                 });
 
                 // Calculate platform statistics
