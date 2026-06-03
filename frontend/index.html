@@ -275,6 +275,67 @@
             color: #6c757d;
             font-style: italic;
         }
+
+        .executive-summary {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .summary-header {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #2E7D32;
+        }
+
+        .summary-header h2 {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+        }
+
+        .insight-section {
+            margin-bottom: 20px;
+        }
+
+        .insight-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .insight-section h3 {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .insight-item {
+            padding: 10px 15px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .insight-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .critical-gap {
+            border-left: 4px solid #dc3545;
+        }
+
+        .recommendation {
+            border-left: 4px solid #1976D2;
+        }
+
+        .no-issues {
+            color: #2E7D32;
+            font-style: italic;
+            padding: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -286,6 +347,18 @@
                 <div class="loading">
                     <div class="spinner"></div>
                     Loading summary...
+                </div>
+            </div>
+        </div>
+
+        <div class="executive-summary">
+            <div class="summary-header">
+                <h2>Executive Summary</h2>
+            </div>
+            <div id="summaryInsights">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading insights...
                 </div>
             </div>
         </div>
