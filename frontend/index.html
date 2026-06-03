@@ -482,14 +482,34 @@
                     const tabsContainer = document.getElementById('platformTabs');
                     tabsContainer.textContent = ''; // Clear existing tabs
 
-                    platforms.forEach(platform => {
+                    platforms.forEach((platform, index) => {
                         const button = document.createElement('button');
                         button.className = 'tab';
+                        button.setAttribute('tabindex', '0');
                         if (platform === this.currentPlatform) {
                             button.classList.add('active');
                         }
                         button.textContent = platform;
+
+                        // Mouse click
                         button.onclick = () => this.showPlatform(platform);
+
+                        // Keyboard navigation
+                        button.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                this.showPlatform(platform);
+                            } else if (e.key === 'ArrowRight') {
+                                e.preventDefault();
+                                const nextIndex = (index + 1) % platforms.length;
+                                tabsContainer.children[nextIndex].focus();
+                            } else if (e.key === 'ArrowLeft') {
+                                e.preventDefault();
+                                const prevIndex = (index - 1 + platforms.length) % platforms.length;
+                                tabsContainer.children[prevIndex].focus();
+                            }
+                        });
+
                         tabsContainer.appendChild(button);
                     });
 
