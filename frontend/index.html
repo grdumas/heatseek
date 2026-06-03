@@ -475,6 +475,7 @@
                 this.currentPlatform = null;
                 this.data = {};
                 this.filters = {};
+                this.autoRefreshInterval = null;
             }
 
             async init() {
@@ -1003,6 +1004,23 @@
                 } finally {
                     btn.disabled = false;
                     btn.textContent = '🔄 Refresh Data';
+                }
+            }
+
+            startAutoRefresh() {
+                // Clear any existing interval first
+                this.stopAutoRefresh();
+
+                // Start new interval (60 seconds)
+                this.autoRefreshInterval = setInterval(() => {
+                    this.refresh();
+                }, 60000);
+            }
+
+            stopAutoRefresh() {
+                if (this.autoRefreshInterval) {
+                    clearInterval(this.autoRefreshInterval);
+                    this.autoRefreshInterval = null;
                 }
             }
         }
