@@ -54,8 +54,8 @@ def get_opensearch_client():
     return OpenSearch(
         hosts=[{"host": OPENSEARCH_CONFIG["host"], "port": OPENSEARCH_CONFIG["port"]}],
         http_auth=(OPENSEARCH_CONFIG["username"], OPENSEARCH_CONFIG["password"]),
-        use_ssl=True,
-        verify_certs=True,
+        use_ssl=os.getenv("OPENSEARCH_USE_SSL", "true").lower() == "true",
+        verify_certs=os.getenv("OPENSEARCH_VERIFY_CERTS", "true").lower() == "true",
         ssl_show_warn=False
     )
 
