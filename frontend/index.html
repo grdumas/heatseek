@@ -400,6 +400,10 @@
                         `Updated: ${updateTime.toLocaleTimeString()}`;
                 } catch (error) {
                     this.showError('Failed to load summary: ' + error.message);
+                    // Clear loading spinner on error
+                    document.getElementById('summary').innerHTML =
+                        '<div class="loading">Failed to load summary</div>';
+                    document.getElementById('lastUpdate').innerText = 'Error loading data';
                 }
             }
 
@@ -446,6 +450,10 @@
                     }
                 } catch (error) {
                     this.showError('Failed to load coverage data: ' + error.message);
+                    // Clear loading spinner on error
+                    document.getElementById('heatmap').innerHTML =
+                        '<div class="loading">Failed to load data. See error message above.</div>';
+                    document.getElementById('platformTabs').innerHTML = '';
                 }
             }
 
