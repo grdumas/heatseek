@@ -324,6 +324,12 @@
                     this.setupEventListeners();
                 } catch (error) {
                     this.showError('Failed to initialize dashboard: ' + error.message);
+                    // Clear all loading spinners on initialization failure
+                    document.getElementById('summary').innerHTML =
+                        '<div class="loading">Failed to load summary</div>';
+                    document.getElementById('heatmap').innerHTML =
+                        '<div class="loading">Failed to load data. See error message above.</div>';
+                    document.getElementById('lastUpdate').innerText = 'Error loading data';
                 }
             }
 
