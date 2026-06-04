@@ -926,7 +926,7 @@
                     { value: coverageScore + '%', label: 'Coverage Score' }
                 ];
 
-                platformMetrics.forEach(({ value, label }) => {
+                platformMetrics.forEach(({ value, label }, index) => {
                     const metricDiv = document.createElement('div');
                     metricDiv.className = 'metric';
 
@@ -934,16 +934,43 @@
                     valueDiv.className = 'metric-value';
                     valueDiv.textContent = value;
 
+                    // Color-code coverage score based on quality
+                    if (index === 3) { // Coverage Score metric
+                        valueDiv.style.color = coverageColor;
+                    }
+
                     const labelDiv = document.createElement('div');
                     labelDiv.className = 'metric-label';
                     labelDiv.textContent = label;
 
                     metricDiv.appendChild(valueDiv);
                     metricDiv.appendChild(labelDiv);
+
+                    // Add quality indicator below coverage score
+                    if (index === 3) {
+                        const qualityDiv = document.createElement('div');
+                        qualityDiv.style.fontSize = '12px';
+                        qualityDiv.style.color = coverageColor;
+                        qualityDiv.style.marginTop = '5px';
+                        qualityDiv.style.fontWeight = '500';
+                        qualityDiv.textContent = coverageQuality;
+                        metricDiv.appendChild(qualityDiv);
+                    }
+
                     summaryDiv.appendChild(metricDiv);
                 });
 
+                // Add architecture breakdown row
+                const archRow = document.createElement('div');
+                archRow.style.marginTop = '15px';
+                archRow.style.paddingTop = '15px';
+                archRow.style.borderTop = '1px solid #dee2e6';
+                archRow.style.fontSize = '14px';
+                archRow.style.color = '#6c757d';
+                archRow.textContent = `Architecture: x86_64 (${x86Count}) | aarch64 (${aarch64Count})`;
+
                 summaryContainer.appendChild(summaryDiv);
+                summaryContainer.appendChild(archRow);
                 summaryContainer.style.display = 'block';
 
                 // Build z-values (build counts) and colors
