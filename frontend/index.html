@@ -895,6 +895,23 @@
                     ? Math.round((viableCells.length / cells.length) * 100)
                     : 0;
 
+                // Calculate architecture breakdown
+                const x86Count = cells.filter(c => c.architecture === 'x86_64').length;
+                const aarch64Count = cells.filter(c => c.architecture === 'aarch64').length;
+
+                // Determine coverage quality color
+                let coverageColor, coverageQuality;
+                if (coverageScore >= 75) {
+                    coverageColor = '#2E7D32'; // Green
+                    coverageQuality = 'Excellent';
+                } else if (coverageScore >= 50) {
+                    coverageColor = '#FFA726'; // Orange
+                    coverageQuality = 'Good';
+                } else {
+                    coverageColor = '#dc3545'; // Red
+                    coverageQuality = 'Needs Improvement';
+                }
+
                 // Display platform summary safely
                 const summaryContainer = document.getElementById('platformSummary');
                 summaryContainer.textContent = ''; // Clear existing content
