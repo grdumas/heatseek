@@ -55,10 +55,10 @@ cp .env.example .env
 nano .env  # Add your credentials
 
 # 3. Start server
-uvicorn server:app --host 0.0.0.0 --port 8080
+uvicorn server:app --host 0.0.0.0 --port 8000
 
 # 4. Open browser
-# Visit: http://localhost:8080
+# Visit: http://localhost:8000
 ```
 
 See [Real-time Dashboard](#real-time-dashboard-details) section for full details.
@@ -78,7 +78,7 @@ Best for periodic reporting or sharing coverage snapshots via email/Confluence.
 # 1. Install dependencies
 python3 -m venv venv
 source venv/bin/activate
-pip install python-dotenv opensearch-py
+pip install -r requirements-static.txt
 
 # 2. Configure OpenSearch
 cp .env.example .env
@@ -122,7 +122,7 @@ Query Parameters:
 
 Example:
 ```bash
-curl "http://localhost:8080/api/coverage?platform=AWS&min_builds=2"
+curl "http://localhost:8000/api/coverage?platform=AWS&min_builds=2"
 ```
 
 #### GET /api/summary
@@ -130,7 +130,7 @@ Get executive summary with coverage metrics.
 
 Example:
 ```bash
-curl http://localhost:8080/api/summary | jq
+curl http://localhost:8000/api/summary | jq
 ```
 
 Response:
@@ -156,7 +156,7 @@ curl -X POST http://localhost:8080/api/refresh
 Get list of all available benchmarks.
 
 ```bash
-curl http://localhost:8080/api/benchmarks
+curl http://localhost:8000/api/benchmarks
 ```
 
 #### GET /api/platform-summary
@@ -170,14 +170,14 @@ curl "http://localhost:8080/api/platform-summary?platform=AWS"
 Health check endpoint for monitoring.
 
 ```bash
-curl http://localhost:8080/health
+curl http://localhost:8000/health
 ```
 
 ### API Documentation
 
 FastAPI provides automatic interactive documentation:
-- **Swagger UI**: http://localhost:8080/docs
-- **ReDoc**: http://localhost:8080/redoc
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
 
 ### Architecture
 
@@ -204,10 +204,13 @@ Tested on RHEL 9.3, 4 CPU cores, 8GB RAM:
 
 | Metric | Value |
 |--------|-------|
+| Cache TTL | 30 seconds (configurable) |
+| Query size | 10,000 records (last 90 days) |
 | Concurrent users | 12 |
+| Worker processes | 2 (configurable) |
 | Requests/second | ~50 |
-| Avg response time (cached) | 80ms |
-| Avg response time (cache miss) | 1.8s |
+| Avg response time (cached) | <100ms |
+| Avg response time (cache miss) | ~2s (OpenSearch query time) |
 | Memory usage | ~150MB |
 | CPU usage (idle) | <5% |
 | CPU usage (under load) | ~30% |
@@ -235,7 +238,7 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for complete production deployment guide incl
 
 ### Development Mode
 ```bash
-uvicorn server:app --reload --host 0.0.0.0 --port 8080
+uvicorn server:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### Modifying Cache TTL
@@ -432,7 +435,7 @@ This error occurs when the dashboard receives a non-JSON response from the API s
 Quick Diagnostics:
 ```bash
 # 1. Check server configuration status
-curl http://localhost:8080/api/config-status
+curl http://localhost:8000/api/config-status
 
 # Expected response:
 # {
@@ -443,8 +446,8 @@ curl http://localhost:8080/api/config-status
 # }
 
 # 2. Test API endpoints directly (should return JSON, not HTML)
-curl http://localhost:8080/api/summary
-curl http://localhost:8080/api/coverage
+curl http://localhost:8000/api/summary
+curl http://localhost:8000/api/coverage
 ```
 
 Common Causes:
@@ -466,10 +469,10 @@ Common Causes:
 3. **Server Not Listening on All Interfaces (Remote Access)**
    ```bash
    # Use --host 0.0.0.0, not 127.0.0.1
-   uvicorn server:app --host 0.0.0.0 --port 8080
+   uvicorn server:app --host 0.0.0.0 --port 8000
    
    # Check firewall rules
-   sudo firewall-cmd --add-port=8080/tcp --permanent
+   sudo firewall-cmd --add-port=8000/tcp --permanent
    sudo firewall-cmd --reload
    ```
 
@@ -492,10 +495,10 @@ tail -f logs/heatseek.log
 #### "Connection refused" errors
 ```bash
 # Check server is running
-curl http://localhost:8080/health
+curl http://localhost:8000/health
 
 # Verify port
-sudo lsof -i :8080
+sudo lsof -i :8000
 
 # Check firewall
 sudo firewall-cmd --list-all
@@ -534,7 +537,7 @@ Check OpenSearch index:
 #### Port Already in Use
 ```bash
 # Find what's using the port
-lsof -i :8080
+lsof -i :8000
 
 # Use a different port
 uvicorn server:app --host 0.0.0.0 --port 8001
@@ -623,7 +626,7 @@ Internal Red Hat tool. Not for external distribution.
 For questions or issues:
 1. Check this README
 2. Review [DEPLOYMENT.md](DEPLOYMENT.md) for production setup
-3. Check API docs at http://localhost:8080/docs (real-time mode)
+3. Check API docs at http://localhost:8000/docs (real-time mode)
 4. Review server logs: `sudo journalctl -u heatseek -f` (real-time mode)
 5. Contact the Performance QA team
 
