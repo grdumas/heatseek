@@ -354,6 +354,21 @@
             }
         }
 
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(120%);
+                opacity: 0;
+            }
+        }
+
+        .toast.hiding {
+            animation: slideOut 0.3s ease-out forwards;
+        }
+
         .toast-message {
             flex: 1;
             font-size: 14px;
@@ -602,7 +617,7 @@
                 // Remove any existing toasts
                 const existingToast = document.querySelector('.toast');
                 if (existingToast) {
-                    existingToast.remove();
+                    this.dismissToast(existingToast);
                 }
 
                 // Create toast
@@ -626,7 +641,7 @@
                     retryBtn.className = 'toast-btn';
                     retryBtn.textContent = 'Retry';
                     retryBtn.onclick = () => {
-                        toast.remove();
+                        this.dismissToast(toast);
                         retryCallback();
                     };
                     actionsDiv.appendChild(retryBtn);
@@ -636,7 +651,7 @@
                 const dismissBtn = document.createElement('button');
                 dismissBtn.className = 'dismiss-btn';
                 dismissBtn.textContent = '×';
-                dismissBtn.onclick = () => toast.remove();
+                dismissBtn.onclick = () => this.dismissToast(toast);
                 actionsDiv.appendChild(dismissBtn);
 
                 toast.appendChild(actionsDiv);
@@ -645,9 +660,21 @@
                 // Auto-dismiss after 8 seconds
                 setTimeout(() => {
                     if (toast.parentNode) {
-                        toast.remove();
+                        this.dismissToast(toast);
                     }
                 }, 8000);
+            }
+
+            dismissToast(toast) {
+                // Add hiding class to trigger slideOut animation
+                toast.classList.add('hiding');
+
+                // Remove from DOM after animation completes
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.remove();
+                    }
+                }, 300); // Match animation duration
             }
 
             clearError() {
