@@ -969,8 +969,30 @@
                 archRow.style.color = '#6c757d';
                 archRow.textContent = `Architecture: x86_64 (${x86Count}) | aarch64 (${aarch64Count})`;
 
+                // Add benchmark coverage list
+                const viableBenchmarks = [...new Set(viableCells.map(c => c.benchmark))].sort();
+                const benchmarkRow = document.createElement('div');
+                benchmarkRow.style.marginTop = '10px';
+                benchmarkRow.style.fontSize = '13px';
+                benchmarkRow.style.color = '#6c757d';
+
+                const viableCount = viableBenchmarks.length;
+                const totalBenchmarkCount = benchmarks.length;
+                benchmarkRow.textContent = `Viable benchmarks: ${viableCount} of ${totalBenchmarkCount}`;
+
+                if (viableCount > 0 && viableCount < 6) {
+                    // Show benchmark names if list is short enough
+                    benchmarkRow.textContent += ` (${viableBenchmarks.join(', ')})`;
+                } else if (viableCount > 0) {
+                    // Show first 3 benchmarks + "and N more"
+                    const firstThree = viableBenchmarks.slice(0, 3).join(', ');
+                    const remaining = viableCount - 3;
+                    benchmarkRow.textContent += ` (${firstThree}, and ${remaining} more)`;
+                }
+
                 summaryContainer.appendChild(summaryDiv);
                 summaryContainer.appendChild(archRow);
+                summaryContainer.appendChild(benchmarkRow);
                 summaryContainer.style.display = 'block';
 
                 // Build z-values (build counts) and colors
