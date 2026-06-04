@@ -961,38 +961,38 @@
                 summaryDiv.className = 'summary';
 
                 const platformMetrics = [
-                    { value: systems.length, label: 'Systems', tooltip: 'Unique instance types tested on this platform' },
-                    { value: allOsBuilds.length, label: 'OS Builds', tooltip: 'Distinct RHEL versions tested across all systems' },
-                    { value: totalTests, label: 'Total Tests', tooltip: 'Total number of test executions recorded' },
-                    { value: coverageScore + '%', label: 'Coverage Score', tooltip: 'Percentage of system×benchmark pairs with 2+ OS builds' }
+                    { key: 'systems', value: systems.length, label: 'Systems', tooltip: 'Unique instance types tested on this platform' },
+                    { key: 'os_builds', value: allOsBuilds.length, label: 'OS Builds', tooltip: 'Distinct RHEL versions tested across all systems' },
+                    { key: 'total_tests', value: totalTests, label: 'Total Tests', tooltip: 'Total number of test executions recorded' },
+                    { key: 'coverage_score', value: coverageScore + '%', label: 'Coverage Score', tooltip: 'Percentage of system×benchmark pairs with 2+ OS builds' }
                 ];
 
-                platformMetrics.forEach(({ value, label, tooltip }, index) => {
+                platformMetrics.forEach((metric) => {
                     const metricDiv = document.createElement('div');
                     metricDiv.className = 'metric';
 
                     const valueDiv = document.createElement('div');
                     valueDiv.className = 'metric-value';
-                    valueDiv.textContent = value;
+                    valueDiv.textContent = metric.value;
 
                     // Color-code coverage score based on quality
-                    if (index === 3) { // Coverage Score metric
+                    if (metric.key === 'coverage_score') {
                         valueDiv.style.color = coverageColor;
                     }
 
                     const labelDiv = document.createElement('div');
                     labelDiv.className = 'metric-label metric-tooltip';
-                    labelDiv.textContent = label;
-                    labelDiv.setAttribute('data-tooltip', tooltip);
+                    labelDiv.textContent = metric.label;
+                    labelDiv.setAttribute('data-tooltip', metric.tooltip);
                     labelDiv.setAttribute('tabindex', '0');
                     labelDiv.setAttribute('role', 'button');
-                    labelDiv.setAttribute('aria-label', `${label}: ${tooltip}`);
+                    labelDiv.setAttribute('aria-label', `${metric.label}: ${metric.tooltip}`);
 
                     metricDiv.appendChild(valueDiv);
                     metricDiv.appendChild(labelDiv);
 
                     // Add quality indicator below coverage score
-                    if (index === 3) {
+                    if (metric.key === 'coverage_score') {
                         const qualityDiv = document.createElement('div');
                         qualityDiv.style.fontSize = '12px';
                         qualityDiv.style.color = coverageColor;
@@ -1021,11 +1021,12 @@
                 benchmarkRow.style.fontSize = '13px';
                 benchmarkRow.style.color = '#6c757d';
 
+                const maxBenchmarksToShow = 5;
                 const viableCount = viableBenchmarks.length;
                 const totalBenchmarkCount = benchmarks.length;
                 benchmarkRow.textContent = `Viable benchmarks: ${viableCount} of ${totalBenchmarkCount}`;
 
-                if (viableCount > 0 && viableCount < 6) {
+                if (viableCount > 0 && viableCount <= maxBenchmarksToShow) {
                     // Show benchmark names if list is short enough
                     benchmarkRow.textContent += ` (${viableBenchmarks.join(', ')})`;
                 } else if (viableCount > 0) {
