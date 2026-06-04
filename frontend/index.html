@@ -240,6 +240,47 @@
             font-size: 32px;
         }
 
+        .metric-tooltip {
+            position: relative;
+            cursor: help;
+        }
+
+        .metric-tooltip:focus {
+            outline: 2px solid #2E7D32;
+            outline-offset: 2px;
+            border-radius: 2px;
+        }
+
+        .metric-tooltip:hover::after,
+        .metric-tooltip:focus::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1000;
+            margin-bottom: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .metric-tooltip:hover::before,
+        .metric-tooltip:focus::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #333;
+            z-index: 1000;
+        }
+
         #heatmap {
             background: white;
             padding: 20px;
@@ -895,6 +936,23 @@
                     ? Math.round((viableCells.length / cells.length) * 100)
                     : 0;
 
+                // Calculate architecture breakdown
+                const x86Count = cells.filter(c => c.architecture === 'x86_64').length;
+                const aarch64Count = cells.filter(c => c.architecture === 'aarch64').length;
+
+                // Determine coverage quality color
+                let coverageColor, coverageQuality;
+                if (coverageScore >= 75) {
+                    coverageColor = '#2E7D32'; // Green
+                    coverageQuality = 'Excellent';
+                } else if (coverageScore >= 50) {
+                    coverageColor = '#FFA726'; // Orange
+                    coverageQuality = 'Good';
+                } else {
+                    coverageColor = '#dc3545'; // Red
+                    coverageQuality = 'Needs Improvement';
+                }
+
                 // Display platform summary safely
                 const summaryContainer = document.getElementById('platformSummary');
                 summaryContainer.textContent = ''; // Clear existing content
@@ -903,30 +961,84 @@
                 summaryDiv.className = 'summary';
 
                 const platformMetrics = [
-                    { value: systems.length, label: 'Systems' },
-                    { value: allOsBuilds.length, label: 'OS Builds' },
-                    { value: totalTests, label: 'Total Tests' },
-                    { value: coverageScore + '%', label: 'Coverage Score' }
+                    { key: 'systems', value: systems.length, label: 'Systems', tooltip: 'Unique instance types tested on this platform' },
+                    { key: 'os_builds', value: allOsBuilds.length, label: 'OS Builds', tooltip: 'Distinct RHEL versions tested across all systems' },
+                    { key: 'total_tests', value: totalTests, label: 'Total Tests', tooltip: 'Total number of test executions recorded' },
+                    { key: 'coverage_score', value: coverageScore + '%', label: 'Coverage Score', tooltip: 'Percentage of system×benchmark pairs with 2+ OS builds' }
                 ];
 
-                platformMetrics.forEach(({ value, label }) => {
+                platformMetrics.forEach((metric) => {
                     const metricDiv = document.createElement('div');
                     metricDiv.className = 'metric';
 
                     const valueDiv = document.createElement('div');
                     valueDiv.className = 'metric-value';
-                    valueDiv.textContent = value;
+                    valueDiv.textContent = metric.value;
+
+                    // Color-code coverage score based on quality
+                    if (metric.key === 'coverage_score') {
+                        valueDiv.style.color = coverageColor;
+                    }
 
                     const labelDiv = document.createElement('div');
-                    labelDiv.className = 'metric-label';
-                    labelDiv.textContent = label;
+                    labelDiv.className = 'metric-label metric-tooltip';
+                    labelDiv.textContent = metric.label;
+                    labelDiv.setAttribute('data-tooltip', metric.tooltip);
+                    labelDiv.setAttribute('tabindex', '0');
+                    labelDiv.setAttribute('role', 'button');
+                    labelDiv.setAttribute('aria-label', `${metric.label}: ${metric.tooltip}`);
 
                     metricDiv.appendChild(valueDiv);
                     metricDiv.appendChild(labelDiv);
+
+                    // Add quality indicator below coverage score
+                    if (metric.key === 'coverage_score') {
+                        const qualityDiv = document.createElement('div');
+                        qualityDiv.style.fontSize = '12px';
+                        qualityDiv.style.color = coverageColor;
+                        qualityDiv.style.marginTop = '5px';
+                        qualityDiv.style.fontWeight = '500';
+                        qualityDiv.textContent = coverageQuality;
+                        metricDiv.appendChild(qualityDiv);
+                    }
+
                     summaryDiv.appendChild(metricDiv);
                 });
 
+                // Add architecture breakdown row
+                const archRow = document.createElement('div');
+                archRow.style.marginTop = '15px';
+                archRow.style.paddingTop = '15px';
+                archRow.style.borderTop = '1px solid #dee2e6';
+                archRow.style.fontSize = '14px';
+                archRow.style.color = '#6c757d';
+                archRow.textContent = `Architecture: x86_64 (${x86Count}) • aarch64 (${aarch64Count})`;
+
+                // Add benchmark coverage list
+                const viableBenchmarks = [...new Set(viableCells.map(c => c.benchmark))].sort();
+                const benchmarkRow = document.createElement('div');
+                benchmarkRow.style.marginTop = '10px';
+                benchmarkRow.style.fontSize = '13px';
+                benchmarkRow.style.color = '#6c757d';
+
+                const maxBenchmarksToShow = 5;
+                const viableCount = viableBenchmarks.length;
+                const totalBenchmarkCount = benchmarks.length;
+                benchmarkRow.textContent = `Viable benchmarks: ${viableCount} of ${totalBenchmarkCount}`;
+
+                if (viableCount > 0 && viableCount <= maxBenchmarksToShow) {
+                    // Show benchmark names if list is short enough
+                    benchmarkRow.textContent += ` (${viableBenchmarks.join(', ')})`;
+                } else if (viableCount > 0) {
+                    // Show first 3 benchmarks + "and N more"
+                    const firstThree = viableBenchmarks.slice(0, 3).join(', ');
+                    const remaining = viableCount - 3;
+                    benchmarkRow.textContent += ` (${firstThree}, and ${remaining} more)`;
+                }
+
                 summaryContainer.appendChild(summaryDiv);
+                summaryContainer.appendChild(archRow);
+                summaryContainer.appendChild(benchmarkRow);
                 summaryContainer.style.display = 'block';
 
                 // Build z-values (build counts) and colors
