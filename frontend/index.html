@@ -961,6 +961,8 @@
                     totalTests = cells.reduce((sum, c) => sum + c.build_count, 0);
                 } else {
                     // Fallback: calculate everything client-side
+                    // IMPORTANT: This logic must stay in sync with calculate_platform_summaries()
+                    // in server.py. If metric definitions change on the server, update here too.
                     systems = [...new Set(cells.map(c => c.system))].sort();
                     benchmarks = [...new Set(cells.map(c => c.benchmark))].sort();
                     allOsBuilds = [...new Set(cells.flatMap(c => c.os_builds))];
