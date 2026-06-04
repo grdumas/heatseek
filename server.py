@@ -416,6 +416,72 @@ async def force_refresh():
         "timestamp": summary["generated_at"]
     }
 
+@lru_cache(maxsize=10)
+def calculate_platform_summaries(cache_key: str, days_back: Optional[int] = None) -> dict:
+    """
+    Calculate and cache platform summaries with same TTL as coverage data
+
+    Args:
+        cache_key: Time-based cache key (same as coverage data)
+        days_back: Optional date filter
+
+    Returns:
+        Dictionary of platform summaries keyed by platform name
+    """
+    matrix, _ = get_cached_data(cache_key, days_back)
+
+    platform_summaries = {}
+    for platform, cells in matrix.items():
+        viable = [c for c in cells if c.viable_for_regression]
+        total = len(cells)
+        coverage_score = (len(viable) / total * 100) if total > 0 else 0
+
+        # Architecture breakdown
+        arch_counts = {}
+        for cell in cells:
+            arch = cell.architecture
+            arch_counts[arch] = arch_counts.get(arch, 0) + 1
+
+        # Top systems by build count
+        system_scores = {}
+        for cell in cells:
+            if cell.build_count >= 3:
+                system_scores[cell.system] = system_scores.get(cell.system, 0) + 1
+        top_systems = sorted(system_scores.items(), key=lambda x: x[1], reverse=True)[:3]
+
+        # Viable benchmarks
+        viable_benchmarks = sorted(list(set(c.benchmark for c in viable)))
+
+        platform_summaries[platform] = {
+            "viable_combinations": len(viable),
+            "total_combinations": total,
+            "coverage_score": round(coverage_score, 1),
+            "architectures": arch_counts,
+            "top_systems": [sys for sys, _ in top_systems],
+            "viable_benchmarks": viable_benchmarks
+        }
+
+    return platform_summaries
+
+@app.get("/api/platform-summary")
+async def get_platform_summary(
+    days_back: Optional[int] = Query(None, ge=1, le=365, description="Filter to last N days (omit for all data)")
+):
+    """
+    Get per-platform summary statistics for enhanced platform insights
+
+    Returns detailed metrics for each platform including:
+    - Viable/total combinations
+    - Coverage score
+    - Architecture breakdown
+    - Top systems
+    - Viable benchmarks
+
+    Query params:
+    - **days_back**: Only include data from last N days (omit for all historical data)
+    """
+    return calculate_platform_summaries(get_cache_key(days_back), days_back)
+
 @app.get("/api/benchmarks")
 async def get_benchmarks(
     days_back: Optional[int] = Query(None, ge=1, le=365, description="Filter to last N days (omit for all data)")
