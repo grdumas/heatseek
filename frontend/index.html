@@ -245,7 +245,14 @@
             cursor: help;
         }
 
-        .metric-tooltip:hover::after {
+        .metric-tooltip:focus {
+            outline: 2px solid #2E7D32;
+            outline-offset: 2px;
+            border-radius: 2px;
+        }
+
+        .metric-tooltip:hover::after,
+        .metric-tooltip:focus::after {
             content: attr(data-tooltip);
             position: absolute;
             bottom: 100%;
@@ -262,7 +269,8 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
 
-        .metric-tooltip:hover::before {
+        .metric-tooltip:hover::before,
+        .metric-tooltip:focus::before {
             content: '';
             position: absolute;
             bottom: 100%;
@@ -976,6 +984,9 @@
                     labelDiv.className = 'metric-label metric-tooltip';
                     labelDiv.textContent = label;
                     labelDiv.setAttribute('data-tooltip', tooltip);
+                    labelDiv.setAttribute('tabindex', '0');
+                    labelDiv.setAttribute('role', 'button');
+                    labelDiv.setAttribute('aria-label', `${label}: ${tooltip}`);
 
                     metricDiv.appendChild(valueDiv);
                     metricDiv.appendChild(labelDiv);
