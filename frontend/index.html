@@ -240,6 +240,39 @@
             font-size: 32px;
         }
 
+        .metric-tooltip {
+            position: relative;
+            cursor: help;
+        }
+
+        .metric-tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1000;
+            margin-bottom: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .metric-tooltip:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #333;
+            z-index: 1000;
+        }
+
         #heatmap {
             background: white;
             padding: 20px;
@@ -920,13 +953,13 @@
                 summaryDiv.className = 'summary';
 
                 const platformMetrics = [
-                    { value: systems.length, label: 'Systems' },
-                    { value: allOsBuilds.length, label: 'OS Builds' },
-                    { value: totalTests, label: 'Total Tests' },
-                    { value: coverageScore + '%', label: 'Coverage Score' }
+                    { value: systems.length, label: 'Systems', tooltip: 'Unique instance types tested on this platform' },
+                    { value: allOsBuilds.length, label: 'OS Builds', tooltip: 'Distinct RHEL versions tested across all systems' },
+                    { value: totalTests, label: 'Total Tests', tooltip: 'Total number of test executions recorded' },
+                    { value: coverageScore + '%', label: 'Coverage Score', tooltip: 'Percentage of system×benchmark pairs with 2+ OS builds' }
                 ];
 
-                platformMetrics.forEach(({ value, label }, index) => {
+                platformMetrics.forEach(({ value, label, tooltip }, index) => {
                     const metricDiv = document.createElement('div');
                     metricDiv.className = 'metric';
 
@@ -940,8 +973,9 @@
                     }
 
                     const labelDiv = document.createElement('div');
-                    labelDiv.className = 'metric-label';
+                    labelDiv.className = 'metric-label metric-tooltip';
                     labelDiv.textContent = label;
+                    labelDiv.setAttribute('data-tooltip', tooltip);
 
                     metricDiv.appendChild(valueDiv);
                     metricDiv.appendChild(labelDiv);
