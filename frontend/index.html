@@ -634,6 +634,7 @@
             constructor() {
                 this.currentPlatform = null;
                 this.data = {};
+                this.platformSummaries = {};
                 this.filters = {};
                 this.autoRefreshInterval = null;
             }
@@ -642,6 +643,7 @@
                 try {
                     await this.loadBenchmarks();
                     await this.loadSummary();
+                    await this.loadPlatformSummaries();
                     await this.loadCoverage();
                     this.setupEventListeners();
                 } catch (error) {
@@ -808,6 +810,21 @@
                 }
             }
 
+            async loadPlatformSummaries() {
+                try {
+                    const response = await fetch('/api/platform-summary');
+
+                    if (!response.ok) {
+                        console.warn('Failed to load platform summaries, will calculate client-side');
+                        return;
+                    }
+
+                    this.platformSummaries = await response.json();
+                } catch (error) {
+                    console.warn('Platform summaries unavailable, will calculate client-side:', error);
+                }
+            }
+
             async loadCoverage() {
                 try {
                     this.clearError();
@@ -926,19 +943,36 @@
                     tab.setAttribute('tabindex', isActive ? '0' : '-1');
                 });
 
-                // Calculate platform statistics
-                const systems = [...new Set(cells.map(c => c.system))].sort();
-                const benchmarks = [...new Set(cells.map(c => c.benchmark))].sort();
-                const allOsBuilds = [...new Set(cells.flatMap(c => c.os_builds))];
-                const totalTests = cells.reduce((sum, c) => sum + c.build_count, 0);
-                const viableCells = cells.filter(c => c.viable);
-                const coverageScore = cells.length > 0
-                    ? Math.round((viableCells.length / cells.length) * 100)
-                    : 0;
+                // Use pre-calculated platform summary if available, otherwise calculate
+                const platformSummary = this.platformSummaries[platform];
+                let systems, benchmarks, allOsBuilds, totalTests, viableCells, coverageScore, x86Count, aarch64Count, viableBenchmarks;
 
-                // Calculate architecture breakdown
-                const x86Count = cells.filter(c => c.architecture === 'x86_64').length;
-                const aarch64Count = cells.filter(c => c.architecture === 'aarch64').length;
+                if (platformSummary) {
+                    // Use server-calculated values
+                    coverageScore = Math.round(platformSummary.coverage_score);
+                    x86Count = platformSummary.architectures['x86_64'] || 0;
+                    aarch64Count = platformSummary.architectures['aarch64'] || 0;
+                    viableBenchmarks = platformSummary.viable_benchmarks;
+
+                    // Still need some client-side calculations for display
+                    systems = [...new Set(cells.map(c => c.system))].sort();
+                    benchmarks = [...new Set(cells.map(c => c.benchmark))].sort();
+                    allOsBuilds = [...new Set(cells.flatMap(c => c.os_builds))];
+                    totalTests = cells.reduce((sum, c) => sum + c.build_count, 0);
+                } else {
+                    // Fallback: calculate everything client-side
+                    systems = [...new Set(cells.map(c => c.system))].sort();
+                    benchmarks = [...new Set(cells.map(c => c.benchmark))].sort();
+                    allOsBuilds = [...new Set(cells.flatMap(c => c.os_builds))];
+                    totalTests = cells.reduce((sum, c) => sum + c.build_count, 0);
+                    viableCells = cells.filter(c => c.viable);
+                    coverageScore = cells.length > 0
+                        ? Math.round((viableCells.length / cells.length) * 100)
+                        : 0;
+                    x86Count = cells.filter(c => c.architecture === 'x86_64').length;
+                    aarch64Count = cells.filter(c => c.architecture === 'aarch64').length;
+                    viableBenchmarks = [...new Set(viableCells.map(c => c.benchmark))].sort();
+                }
 
                 // Determine coverage quality color
                 let coverageColor, coverageQuality;
@@ -1014,8 +1048,7 @@
                 archRow.style.color = '#6c757d';
                 archRow.textContent = `Architecture: x86_64 (${x86Count}) • aarch64 (${aarch64Count})`;
 
-                // Add benchmark coverage list
-                const viableBenchmarks = [...new Set(viableCells.map(c => c.benchmark))].sort();
+                // Add benchmark coverage list (already calculated above)
                 const benchmarkRow = document.createElement('div');
                 benchmarkRow.style.marginTop = '10px';
                 benchmarkRow.style.fontSize = '13px';
