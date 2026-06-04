@@ -268,6 +268,32 @@
             100% { transform: rotate(360deg); }
         }
 
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s ease-in-out infinite;
+            border-radius: 6px;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-metric {
+            height: 100px;
+        }
+
+        .skeleton-text {
+            height: 20px;
+            margin-bottom: 10px;
+        }
+
+        .skeleton-text:last-child {
+            margin-bottom: 0;
+            width: 60%;
+        }
+
         .legend {
             display: flex;
             gap: 20px;
@@ -298,6 +324,91 @@
             border-radius: 6px;
             margin-bottom: 20px;
             border-left: 4px solid #dc3545;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #dc3545;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            max-width: 400px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(120%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(120%);
+                opacity: 0;
+            }
+        }
+
+        .toast.hiding {
+            animation: slideOut 0.3s ease-out forwards;
+        }
+
+        .toast-message {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        .toast-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .toast-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.4);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        .toast-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .dismiss-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            line-height: 24px;
+            text-align: center;
+        }
+
+        .dismiss-btn:hover {
+            opacity: 0.8;
         }
 
         .filter-status-container {
@@ -383,10 +494,10 @@
             <h1>HeatSeek Coverage Dashboard</h1>
             <p class="subtitle">Real-time RHEL performance test coverage analysis</p>
             <div class="summary" id="summary">
-                <div class="loading">
-                    <div class="spinner"></div>
-                    Loading summary...
-                </div>
+                <div class="skeleton skeleton-metric"></div>
+                <div class="skeleton skeleton-metric"></div>
+                <div class="skeleton skeleton-metric"></div>
+                <div class="skeleton skeleton-metric"></div>
             </div>
         </div>
 
@@ -395,10 +506,9 @@
                 <h2>Executive Summary</h2>
             </div>
             <div id="summaryInsights">
-                <div class="loading">
-                    <div class="spinner"></div>
-                    Loading insights...
-                </div>
+                <div class="skeleton skeleton-text"></div>
+                <div class="skeleton skeleton-text"></div>
+                <div class="skeleton skeleton-text"></div>
             </div>
         </div>
 
@@ -451,10 +561,7 @@
         </div>
 
         <div id="heatmap" role="tabpanel">
-            <div class="loading">
-                <div class="spinner"></div>
-                Loading coverage data...
-            </div>
+            <div class="skeleton skeleton-text" style="height: 400px; width: 100%;"></div>
         </div>
 
         <div class="legend">
@@ -497,7 +604,7 @@
                     await this.loadCoverage();
                     this.setupEventListeners();
                 } catch (error) {
-                    this.showError('Failed to initialize dashboard: ' + error.message);
+                    this.showError('Failed to initialize dashboard: ' + error.message, () => this.init());
                     // Clear all loading spinners on initialization failure
                     this.setLoadingMessage('summary', 'Failed to load summary');
                     this.setLoadingMessage('heatmap', 'Failed to load data. See error message above.');
@@ -506,13 +613,68 @@
                 }
             }
 
-            showError(message) {
-                const errorContainer = document.getElementById('errorContainer');
-                errorContainer.textContent = ''; // Clear existing errors
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'error';
-                errorDiv.textContent = message; // Safe: no HTML interpretation
-                errorContainer.appendChild(errorDiv);
+            showError(message, retryCallback = null) {
+                // Remove any existing toasts
+                const existingToast = document.querySelector('.toast');
+                if (existingToast) {
+                    this.dismissToast(existingToast);
+                }
+
+                // Create toast
+                const toast = document.createElement('div');
+                toast.className = 'toast';
+                toast.setAttribute('role', 'alert');
+                toast.setAttribute('aria-live', 'assertive');
+
+                const messageSpan = document.createElement('span');
+                messageSpan.className = 'toast-message';
+                messageSpan.textContent = message;
+                toast.appendChild(messageSpan);
+
+                // Create actions container
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'toast-actions';
+
+                // Add retry button if callback provided
+                if (retryCallback) {
+                    const retryBtn = document.createElement('button');
+                    retryBtn.className = 'toast-btn';
+                    retryBtn.textContent = 'Retry';
+                    retryBtn.onclick = () => {
+                        this.dismissToast(toast);
+                        retryCallback();
+                    };
+                    actionsDiv.appendChild(retryBtn);
+                }
+
+                // Add dismiss button
+                const dismissBtn = document.createElement('button');
+                dismissBtn.className = 'dismiss-btn';
+                dismissBtn.textContent = '×';
+                dismissBtn.onclick = () => this.dismissToast(toast);
+                actionsDiv.appendChild(dismissBtn);
+
+                toast.appendChild(actionsDiv);
+                document.body.appendChild(toast);
+
+                // Auto-dismiss after 8 seconds
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        this.dismissToast(toast);
+                    }
+                }, 8000);
+            }
+
+            dismissToast(toast) {
+                // Add hiding class to trigger slideOut animation
+                toast.classList.add('hiding');
+
+                // Remove from DOM after animation completes
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.remove();
+                    }
+                }, 300); // Match animation duration
             }
 
             clearError() {
@@ -597,7 +759,7 @@
                     // Render executive summary insights
                     this.renderExecutiveSummary(summary);
                 } catch (error) {
-                    this.showError('Failed to load summary: ' + error.message);
+                    this.showError('Failed to load summary: ' + error.message, () => this.loadSummary());
                     // Clear loading spinner on error
                     this.setLoadingMessage('summary', 'Failed to load summary');
                     this.setLoadingMessage('summaryInsights', 'Failed to load insights');
@@ -691,7 +853,7 @@
                     // Update filter status with current data
                     this.updateFilterStatus();
                 } catch (error) {
-                    this.showError('Failed to load coverage data: ' + error.message);
+                    this.showError('Failed to load coverage data: ' + error.message, () => this.loadCoverage());
                     // Clear loading spinner on error
                     this.setLoadingMessage('heatmap', 'Failed to load data. See error message above.');
                     document.getElementById('platformTabs').textContent = '';
@@ -1023,7 +1185,7 @@
                     await this.loadCoverage();
                     this.clearError();
                 } catch (error) {
-                    this.showError('Failed to refresh: ' + error.message);
+                    this.showError('Failed to refresh: ' + error.message, () => this.refresh());
                 } finally {
                     btn.disabled = false;
                     btn.textContent = '🔄 Refresh Data';
