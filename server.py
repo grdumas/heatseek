@@ -416,24 +416,19 @@ async def force_refresh():
         "timestamp": summary["generated_at"]
     }
 
-@app.get("/api/platform-summary")
-async def get_platform_summary(
-    days_back: Optional[int] = Query(None, ge=1, le=365, description="Filter to last N days (omit for all data)")
-):
+@lru_cache(maxsize=10)
+def calculate_platform_summaries(cache_key: str, days_back: Optional[int] = None) -> dict:
     """
-    Get per-platform summary statistics for enhanced platform insights
+    Calculate and cache platform summaries with same TTL as coverage data
 
-    Returns detailed metrics for each platform including:
-    - Viable/total combinations
-    - Coverage score
-    - Architecture breakdown
-    - Top systems
-    - Viable benchmarks
+    Args:
+        cache_key: Time-based cache key (same as coverage data)
+        days_back: Optional date filter
 
-    Query params:
-    - **days_back**: Only include data from last N days (omit for all historical data)
+    Returns:
+        Dictionary of platform summaries keyed by platform name
     """
-    matrix, _ = get_cached_data(get_cache_key(days_back), days_back)
+    matrix, _ = get_cached_data(cache_key, days_back)
 
     platform_summaries = {}
     for platform, cells in matrix.items():
@@ -467,6 +462,25 @@ async def get_platform_summary(
         }
 
     return platform_summaries
+
+@app.get("/api/platform-summary")
+async def get_platform_summary(
+    days_back: Optional[int] = Query(None, ge=1, le=365, description="Filter to last N days (omit for all data)")
+):
+    """
+    Get per-platform summary statistics for enhanced platform insights
+
+    Returns detailed metrics for each platform including:
+    - Viable/total combinations
+    - Coverage score
+    - Architecture breakdown
+    - Top systems
+    - Viable benchmarks
+
+    Query params:
+    - **days_back**: Only include data from last N days (omit for all historical data)
+    """
+    return calculate_platform_summaries(get_cache_key(days_back), days_back)
 
 @app.get("/api/benchmarks")
 async def get_benchmarks(
